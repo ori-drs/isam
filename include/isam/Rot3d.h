@@ -2,7 +2,7 @@
  * @file Rot3d.h
  * @brief 3D rotation class.
  * @author Michael Kaess
- * @version $Id: Rot3d.h 2825 2010-08-19 21:35:34Z kaess $
+ * @version $Id: Rot3d.h 2925 2010-08-27 17:48:05Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -24,7 +24,10 @@
  *
  */
 
-/* Conventions, see Pose3d.h */
+/** @class isam::Rot3d
+ *
+ * For conventions, see isam::Pose3d.h
+ */
 
 #pragma once
 

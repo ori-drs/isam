@@ -2,7 +2,7 @@
  * @file SparseSystem.cpp
  * @brief Adds rhs functionality to sparse matrix for iSAM.
  * @author Michael Kaess
- * @version $Id: SparseSystem.cpp 2898 2010-08-24 01:06:18Z kaess $
+ * @version $Id: SparseSystem.cpp 2921 2010-08-27 04:23:38Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -74,8 +74,8 @@ void SparseSystem::apply_givens(int row, int col, double* c_givens, double* s_gi
   // modify rhs
   double r1 = _rhs(col);
   double r2 = _rhs(row);
-  _rhs(col) = c*r1 - s*r2;
-  _rhs(row) = s*r1 + c*r2;
+  _rhs.set(col, c*r1 - s*r2);
+  _rhs.set(row, s*r1 + c*r2);
 }
 
 void SparseSystem::append_new_rows(int num) {
@@ -88,7 +88,7 @@ void SparseSystem::add_row(const SparseVector& new_row, double new_r) {
 
   append_new_rows(1);
   int row = num_rows() - 1;
-  _rhs(row) = new_r;
+  _rhs.set(row, new_r);
   set_row(row, new_row);
 }
 
@@ -133,7 +133,7 @@ Vector SparseSystem::solve() const {
     }
     // divide result by diagonal entry of R
     double diag = rowvec(row);
-    result(row) = terms / diag;
+    result.set(row, terms / diag);
   }
   return result;
 }

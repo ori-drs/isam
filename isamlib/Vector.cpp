@@ -2,7 +2,7 @@
  * @file Vector.cpp
  * @brief Basic dense vector library.
  * @author Michael Kaess
- * @version $Id: Vector.cpp 2773 2010-08-13 22:43:05Z kaess $
+ * @version $Id: Vector.cpp 2921 2010-08-27 04:23:38Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -70,29 +70,18 @@ const Vector& Vector::operator= (const Vector& rhs) {
   return *this;
 }
 
-double& Vector::operator() (int r) {
-  require(r>=0 && r<num_rows(), "Vector::() index outside vector.");
-  return(_data[r]);
-}
-
 const double& Vector::operator() (int r) const {
   require(r>=0 && r<num_rows(), "Vector::() index outside vector.");
   return(_data[r]);
 }
 
 const Vector Vector::operator*(const Vector& rhs) const {
-  if (num_rows()==rhs.num_rows()) {
-    // element-wise multiplication
+  require(num_rows()==rhs.num_rows(), "Vector::operator* implements element-wise product, vectors must have same length.");
     Vector V(num_rows());
     for (int r=0; r<num_rows(); r++) {
-      V(r) = operator()(r)*rhs(r);
+      V.set(r, operator()(r)*rhs(r));
     }
     return V;
-  } else {
-    // normal matrix multiplication (can only be outer product)
-    return operator*(rhs);
-  }
-  // does not include scalar product: note that return value different!
 }
 
 double Vector::dot(const Vector& rhs) const {
@@ -108,24 +97,21 @@ const Matrix Vector::diag_matrix() const {
   int n = num_rows();
   Matrix M = Matrix::zeros(n);
   for (int r=0; r<n; r++) {
-    M(r,r) = operator()(r);
+    M.set(r, r, operator()(r));
   }
   return M;
 }
 
-const double Vector::get(int r) {
-  return operator()(r);
-}
-
 const void Vector::set(int r, double val) {
-  operator()(r) = val;
+  require(r>=0 && r<num_rows(), "Vector::set() index outside vector.");
+  _data[r] = val;
 }
 
 const Vector Vector::abs() const {
   int n = num_rows();
   Vector v(n);
   for (int r=0; r<n; r++) {
-    v(r) = fabs(operator()(r));
+    v.set(r, fabs(operator()(r)));
   }
   return v;
 }
@@ -187,7 +173,7 @@ Vector make_Vector(int r, ...) {
   va_list vs;
   va_start(vs, r); // r is the last known parameter of this function
   for (int _r = 0; _r<r; _r++) {
-    V(_r) = va_arg(vs, double);
+    V.set(_r, va_arg(vs, double));
   }
   va_end(vs);
   return V;
@@ -202,7 +188,7 @@ const Vector operator/(const Vector& lhs, double rhs) {
   double inv_rhs = 1. / rhs; // only one division, more efficient
   Vector V(n);
   for (int r=0; r<n; r++) {
-    V(r) = lhs(r) * inv_rhs;
+    V.set(r, lhs(r) * inv_rhs);
   }
   return V;
 }

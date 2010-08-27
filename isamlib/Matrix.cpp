@@ -2,7 +2,7 @@
  * @file Matrix.cpp
  * @brief Basic dense matrix library.
  * @author Michael Kaess
- * @version $Id: Matrix.cpp 2736 2010-08-04 20:24:05Z kaess $
+ * @version $Id: Matrix.cpp 2921 2010-08-27 04:23:38Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -42,10 +42,10 @@ void collect(const Matrix &A, const Matrix &B, Matrix &C) {
   require(A.num_cols()+B.num_cols()==C.num_cols() && A.num_rows()==C.num_rows(), "Matrix::collect(): Wrong output matrix.");
   for (int r=0; r<A.num_rows(); r++) {
     for (int c=0; c<A.num_cols(); c++) {
-      C(r,c) = A(r,c);
+      C.set(r, c, A(r,c));
     }
     for (int c=0; c<B.num_cols(); c++) {
-      C(r,c+A.num_cols()) = B(r,c);
+      C.set(r, c+A.num_cols(), B(r,c));
     }
   }
 }
@@ -55,10 +55,10 @@ void stack(const Matrix &A, const Matrix &B, Matrix &C) {
   require(A.num_rows()+B.num_rows()==C.num_rows() && A.num_cols()==C.num_cols(), "Matrix::stack(): Wrong output matrix.");
   for (int c=0; c<A.num_cols(); c++) {
     for (int r=0; r<A.num_rows(); r++) {
-      C(r,c) = A(r,c);
+      C.set(r, c, A(r,c));
     }
     for (int r=0; r<B.num_rows(); r++) {
-      C(r+A.num_rows(),c) = B(r,c);
+      C.set(r+A.num_rows(), c, B(r,c));
     }
   }
 }
@@ -143,11 +143,6 @@ const Matrix& Matrix::operator= (const Matrix& rhs) {
   return *this;
 }
 
-double& Matrix::operator()(int r, int c) {
-  require(r>=0 && c>=0 && r<_num_rows && c<_num_cols, "Matrix::() index outside matrix.");
-  return(_data[r*_num_cols+c]);
-}
-
 const double& Matrix::operator()(int r, int c) const {
   require(r>=0 && c>=0 && r<_num_rows && c<_num_cols, "Matrix::() index outside matrix.");
   return(_data[r*_num_cols+c]);
@@ -171,7 +166,7 @@ const Matrix Matrix::operator+(const Matrix& rhs) const {
   Matrix M(num_rows(), num_cols());
   for (int r=0; r<M.num_rows(); r++) {
     for (int c=0; c<M.num_cols(); c++) {
-      M(r,c) = operator()(r,c) + rhs(r,c);
+      M.set(r, c, operator()(r,c) + rhs(r,c));
     }
   }
   return M;
@@ -183,7 +178,7 @@ const Matrix Matrix::operator-(const Matrix& rhs) const {
   Matrix M(num_rows(), num_cols());
   for (int r=0; r<M.num_rows(); r++) {
     for (int c=0; c<M.num_cols(); c++) {
-      M(r,c) = operator()(r,c) - rhs(r,c);
+      M.set(r, c, operator()(r,c) - rhs(r,c));
     }
   }
   return M;
@@ -193,7 +188,7 @@ const Matrix Matrix::operator-() const {
   Matrix M(num_rows(), num_cols());
   for (int r=0; r<M.num_rows(); r++) {
     for (int c=0; c<M.num_cols(); c++) {
-      M(r,c) = -operator()(r,c);
+      M.set(r, c, -operator()(r,c));
     }
   }
   return M;
@@ -208,25 +203,22 @@ const Matrix Matrix::operator*(const Matrix& rhs) const {
       for (int i=0; i<_num_cols; i++) {
         res += /*operator()(r,i)*/_data[r*_num_cols+i] * rhs._data[i*rhs._num_cols+c];
       }
-      M(r,c) = res;
+      M.set(r, c, res);
     }
   }
   return M;
 }
 
-const double Matrix::get(int r, int c) const {
-  return operator()(r,c);
-}
-
 const void Matrix::set(int r, int c, double val) {
-  operator()(r,c) = val;
+  require(r>=0 && c>=0 && r<_num_rows && c<_num_cols, "Matrix::set() index outside matrix.");
+  _data[r*_num_cols+c] = val;
 }
 
 const Matrix Matrix::transpose() const {
   Matrix M(num_cols(), num_rows());
   for (int r=0; r<num_rows(); r++) {
     for (int c=0; c<num_cols(); c++) {
-      M(c,r) = operator()(r,c);
+      M.set(c, r, operator()(r,c));
     }
   }
   return M;
@@ -268,7 +260,7 @@ Matrix Matrix::eye(int n) {
 Matrix Matrix::unit(int r, int nth) {
   require(r>=1 && nth>=0 && r>nth, "Matrix::unit: wrong argument");
   Matrix M = Matrix::zeros(r,1);
-  M(nth,0) = 1.;
+  M.set(nth, 0, 1.);
   return M;
 }
 
@@ -280,7 +272,7 @@ Matrix make_Matrix(int r, int c, ...) {
   va_start(vs, c); // c is the last known parameter of this function
   for (int _r = 0; _r<r; _r++) {
     for (int _c = 0; _c<c; _c++) {
-      M(_r,_c) = va_arg(vs, double);
+      M.set(_r, _c, va_arg(vs, double));
     }
   }
   va_end(vs);
@@ -293,7 +285,7 @@ const Matrix operator*(double lhs, const Matrix& rhs) {
   Matrix res(m, n);
   for (int r=0; r<m; r++) {
     for (int c=0; c<n; c++) {
-      res(r,c) = lhs*rhs(r,c);
+      res.set(r, c, lhs*rhs(r,c));
     }
   }
   return res;

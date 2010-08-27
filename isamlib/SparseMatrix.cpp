@@ -2,7 +2,7 @@
  * @file SparseMatrix.cpp
  * @brief Sparse matrix functionality for iSAM.
  * @author Michael Kaess
- * @version $Id: SparseMatrix.cpp 2885 2010-08-23 03:53:45Z kaess $
+ * @version $Id: SparseMatrix.cpp 2921 2010-08-27 04:23:38Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -344,7 +344,7 @@ const Vector operator*(const SparseMatrix& lhs, const Vector& rhs) {
     for (SparseVectorIter iter(lhs.get_row(row)); iter.valid(); iter.next()) {
       double val;
       int col = iter.get(val);
-      res(row) += val * rhs(col);
+      res.set(row, res(row) + val * rhs(col));
     }
   }
   return res;
@@ -357,10 +357,30 @@ Vector mul_SparseMatrixTrans_Vector(const SparseMatrix& lhs, const Vector& rhs) 
     for (SparseVectorIter iter(lhs.get_row(row)); iter.valid(); iter.next()) {
       double val;
       int col = iter.get(val);
-      res(col) += val * rhs(row);
+      res.set(col, res(col) + val * rhs(row));
     }
   }
   return res;
+}
+
+SparseMatrix sparseMatrix_of_matrix(const Matrix& m) {
+  SparseMatrix s(m.num_rows(), m.num_cols());
+  for (int r=0; r<m.num_rows(); r++) {
+    for (int c=0; c<m.num_cols(); c++) {
+      s.set(r, c, m(r,c));
+    }
+  }
+  return s;
+}
+
+Matrix matrix_of_sparseMatrix(const SparseMatrix& s) {
+  Matrix m(s.num_rows(), s.num_cols());
+  for (int r=0; r<s.num_rows(); r++) {
+    for (int c=0; c<s.num_cols(); c++) {
+      m.set(r, c, s(r,c));
+    }
+  }
+  return m;
 }
 
 }

@@ -5,6 +5,10 @@ project(isam)
 
 cmake_minimum_required (VERSION 2.6)
 
+if(CMAKE_BINARY_DIR STREQUAL PROJECT_SOURCE_DIR)
+  message(FATAL_ERROR "\nPlease do not build in the source directory, but instead build in a separate directory.\nThe iSAM Makefile provides useful shortcuts for using cmake. Type \"make distclean\" to remove any local cmake build files. Then simply type \"make\", which will call cmake in the build/ directory.")
+endif()
+
 if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
   set(CMAKE_BUILD_TYPE Release CACHE STRING
     "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel." FORCE)
@@ -18,8 +22,8 @@ set (EXECUTABLE_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/bin" CACHE PATH
 
 # do not edit - use ccmake to change
 option (PROFILE "Enable profiling" OFF)
-option (USE_LCM "Compile with LCM interface" OFF)
-option (USE_GUI "Compile with GUI (glut)" ON)
+option (USE_LCM "Compile with LCM interface (lcm library needed)" OFF)
+option (USE_GUI "Compile with GUI (SDL library needed)" ON)
 
 add_definitions(-Wall)
 # note: -g automatic for Debug mode, -O3 -DNDEBUG automatic for Release

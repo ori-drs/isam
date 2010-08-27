@@ -2,7 +2,7 @@
  * @file isam.cpp
  * @brief Main isam program.
  * @author Michael Kaess
- * @version $Id: isam.cpp 2902 2010-08-24 04:54:40Z kaess $
+ * @version $Id: isam.cpp 2922 2010-08-27 05:42:42Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -100,6 +100,7 @@ bool lcm_first = true;
 #ifdef USE_GUI
 Viewer viewer;
 #endif
+Loader* loader;
 
 // for recording of statistics for each time step (for visualization)
 class Stats {
@@ -108,157 +109,6 @@ public:
   double chi2;
 };
 vector<class Stats> stats;
-
-/**
- * Calculate covariances for both points and poses up to the given time step.
- */
-void covariances(const Loader& loader, unsigned int step, list<Matrix>& point_marginals, list<Matrix>& pose_marginals) {
-  // make sure return arguments are empty
-  point_marginals.clear();
-  pose_marginals.clear();
-
-  // combining everything into one call is faster,
-  // as it avoids recalculating commonly needed entries
-  Slam::node_lists_t node_lists;
-  for (unsigned int i=0; i<step; i++) {
-    list<Node*> entry;
-    entry.push_back(loader.pose_nodes()[i]);
-    node_lists.push_back(entry);
-  }
-  for (unsigned int i=0; i<loader.num_points(step); i++) {
-    list<Node*> entry;
-    entry.push_back(loader.point_nodes()[i]);
-    node_lists.push_back(entry);
-  }
-  pose_marginals = slam.marginal_covariance(node_lists);
-
-  // split into points and poses
-  list<Matrix>::iterator center = pose_marginals.begin();
-  for (unsigned int i=0; i<step; i++, center++);
-  point_marginals.splice(point_marginals.begin(), pose_marginals, center, pose_marginals.end());
-}
-
-/**
- * Visualize data during optimization in internal viewer
- * or send data via LCM (to an external viewer).
- */
-void visualize(unsigned int step, const Loader& loader) {
-  list<Matrix> point_marginals;
-  list<Matrix> pose_marginals;
-  if (calculate_covariances && (use_gui || use_lcm) && (step%mod_draw==0)) {
-    covariances(loader, step, point_marginals, pose_marginals);
-  }
-
-#ifdef USE_LCM
-  {
-    // ids also determine color in viewer
-    const int id_trajectory = 0;
-    const int id_landmarks = 1;
-    const int id_constraints = 2;
-    const int id_measurements = 3;
-    const int id_pose_covs = 4;
-    const int id_point_covs = 5;
-
-    // send to LCM viewer
-    if (use_lcm && lcm_first) {
-      lcm.send_reset();
-      lcm_first = false;
-    }
-    if (use_lcm && step%mod_draw==0) {
-      lcm.send_nodes(loader.poses(step), id_trajectory, (char*)"Trajectory", 1);
-      lcm.send_nodes(loader.points(step), id_landmarks, (char*)"Landmarks", 2);
-      lcm.send_links(loader.constraints(step), id_constraints,
-                     (char*)"Odometry", id_trajectory, id_trajectory);
-      lcm.send_links(loader.measurements(step), id_measurements,
-                     (char*)"Measurements", id_trajectory, id_landmarks);
-      if (calculate_covariances) {
-        lcm.send_covariances(pose_marginals,  id_pose_covs,
-                             (char*)"Pose Covs",  id_trajectory, loader.is_3d());
-        lcm.send_covariances(point_marginals, id_point_covs,
-                             (char*)"Point Covs", id_landmarks,  loader.is_3d());
-      }
-    }
-  }
-#endif
-
-#ifdef USE_GUI
-  {
-    // display in internal 3D viewer
-    const int id_trajectory = 0;
-    const int id_landmarks = 1;
-    const int id_constraints = 2;
-    const int id_measurements = 3;
-    if (use_gui && step%mod_draw==0) {
-      viewer.set_nodes(loader.poses(step), id_trajectory,
-                       (char*)"Trajectory", VIEWER_OBJ_POSE3D);
-      viewer.set_nodes(loader.points(step), id_landmarks,
-                       (char*)"Landmarks", VIEWER_OBJ_TREE);
-      viewer.set_links(loader.constraints(step), id_constraints,
-                       "Odometry", id_trajectory, id_trajectory);
-      viewer.set_links(loader.measurements(step), id_measurements,
-                       "Measurements", id_trajectory, id_landmarks);
-    }
-  }
-#endif
-}
-
-/**
- * Incrementally process factors.
- */
-void incremental_slam(const Loader& loader) {
-  unsigned int step = 0;
-  for (; step<loader.num_steps(); step++) {
-
-    double t0 = tic();
-
-    tic("setup");
-
-    // add new variables and constraints
-    for(list<Node*>::const_iterator it = loader.nodes(step).begin(); it!=loader.nodes(step).end(); it++) {
-      if (prop.verbose) cout << **it << endl;
-      slam.add_node(*it);
-    }
-    for(list<Factor*>::const_iterator it = loader.factors(step).begin(); it!=loader.factors(step).end(); it++) {
-      if (prop.verbose) cout << **it << endl;
-      slam.add_factor(*it);
-    }
-
-    toc("setup");
-    tic("incremental");
-
-    if (!(batch_processing || no_optimization)) {
-      slam.update();
-    }
-
-    toc("incremental");
-
-    if (save_stats) {
-      stats.resize(step+1);
-      stats[step].time = toc(t0);
-      stats[step].chi2 = slam.normalized_chi2();
-    }
-
-    // visualization is not counted in timing
-    if (!(batch_processing || no_optimization)) {
-      visualize(step, loader);
-    }
-  }
-
-  visualize(step-1, loader);
-
-  if (batch_processing && !no_optimization) {
-    tic("batch");
-    slam.batch_optimization();
-    toc("batch");
-  } else {
-    // end with a batch step/relinearization
-    prop.mod_batch = 1;
-    slam.set_properties(prop);
-    slam.update();
-  }
-
-  visualize(step-1, loader);
-}
 
 /**
  * Command line argument processing.
@@ -375,15 +225,191 @@ void save_statistics(const string& fname) {
 }
 
 /**
+ * Calculate covariances for both points and poses up to the given time step.
+ */
+void covariances(unsigned int step, list<Matrix>& point_marginals, list<Matrix>& pose_marginals) {
+  // make sure return arguments are empty
+  point_marginals.clear();
+  pose_marginals.clear();
+
+  // combining everything into one call is faster,
+  // as it avoids recalculating commonly needed entries
+  Slam::node_lists_t node_lists;
+  for (unsigned int i=0; i<step; i++) {
+    list<Node*> entry;
+    entry.push_back(loader->pose_nodes()[i]);
+    node_lists.push_back(entry);
+  }
+  for (unsigned int i=0; i<loader->num_points(step); i++) {
+    list<Node*> entry;
+    entry.push_back(loader->point_nodes()[i]);
+    node_lists.push_back(entry);
+  }
+  pose_marginals = slam.marginal_covariance(node_lists);
+
+  // split into points and poses
+  if (pose_marginals.size() > 0) {
+    list<Matrix>::iterator center = pose_marginals.begin();
+    for (unsigned int i=0; i<step; i++, center++);
+    point_marginals.splice(point_marginals.begin(), pose_marginals, center, pose_marginals.end());
+  }
+}
+
+/**
+ * Visualize data during optimization in internal viewer
+ * or send data via LCM (to an external viewer).
+ */
+void visualize(unsigned int step) {
+  list<Matrix> point_marginals;
+  list<Matrix> pose_marginals;
+  if (calculate_covariances && (use_gui || use_lcm) && (step%mod_draw==0)) {
+    covariances(step, point_marginals, pose_marginals);
+  }
+
+#ifdef USE_LCM
+  {
+    // ids also determine color in viewer
+    const int id_trajectory = 0;
+    const int id_landmarks = 1;
+    const int id_constraints = 2;
+    const int id_measurements = 3;
+    const int id_pose_covs = 4;
+    const int id_point_covs = 5;
+
+    // send to LCM viewer
+    if (use_lcm && lcm_first) {
+      lcm.send_reset();
+      lcm_first = false;
+    }
+    if (use_lcm && step%mod_draw==0) {
+      lcm.send_nodes(loader->poses(step), id_trajectory, (char*)"Trajectory", 1);
+      lcm.send_nodes(loader->points(step), id_landmarks, (char*)"Landmarks", 2);
+      lcm.send_links(loader->constraints(step), id_constraints,
+                     (char*)"Odometry", id_trajectory, id_trajectory);
+      lcm.send_links(loader->measurements(step), id_measurements,
+                     (char*)"Measurements", id_trajectory, id_landmarks);
+      if (calculate_covariances) {
+        lcm.send_covariances(pose_marginals,  id_pose_covs,
+                             (char*)"Pose Covs",  id_trajectory, loader->is_3d());
+        lcm.send_covariances(point_marginals, id_point_covs,
+                             (char*)"Point Covs", id_landmarks,  loader->is_3d());
+      }
+    }
+  }
+#endif
+
+#ifdef USE_GUI
+  {
+    // display in internal 3D viewer
+    const int id_trajectory = 0;
+    const int id_landmarks = 1;
+    const int id_constraints = 2;
+    const int id_measurements = 3;
+    const int id_pose_covs = 4;
+    const int id_point_covs = 5;
+    if (use_gui && step%mod_draw==0) {
+      viewer.set_nodes(loader->poses(step), id_trajectory,
+                       (char*)"Trajectory", VIEWER_OBJ_POSE3D);
+      viewer.set_nodes(loader->points(step), id_landmarks,
+                       (char*)"Landmarks", VIEWER_OBJ_TREE);
+      viewer.set_links(loader->constraints(step), id_constraints,
+                       "Odometry", id_trajectory, id_trajectory);
+      viewer.set_links(loader->measurements(step), id_measurements,
+                       "Measurements", id_trajectory, id_landmarks);
+      if (calculate_covariances) {
+        viewer.set_covariances(pose_marginals,  id_pose_covs,
+                               (char*)"Pose Covs",  id_trajectory, loader->is_3d());
+        viewer.set_covariances(point_marginals, id_point_covs,
+                               (char*)"Point Covs", id_landmarks,  loader->is_3d());
+      }
+    }
+  }
+#endif
+}
+
+/**
+ * Quit if viewer was closed.
+ */
+void check_quit() {
+#ifdef USE_GUI
+  if (viewer.exit_requested()) {
+    cout << endl << "Aborted by user..." << endl;
+    exit(0);
+  }
+#endif
+}
+
+/**
+ * Incrementally process factors.
+ */
+void incremental_slam() {
+  unsigned int step = 0;
+
+	for (; step<loader->num_steps(); step++) {
+
+	  check_quit();
+
+	  double t0 = tic();
+
+	  tic("setup");
+
+	  // add new variables and constraints
+	  for(list<Node*>::const_iterator it = loader->nodes(step).begin(); it!=loader->nodes(step).end(); it++) {
+		if (prop.verbose) cout << **it << endl;
+		slam.add_node(*it);
+	  }
+	  for(list<Factor*>::const_iterator it = loader->factors(step).begin(); it!=loader->factors(step).end(); it++) {
+		if (prop.verbose) cout << **it << endl;
+		slam.add_factor(*it);
+	  }
+
+	  toc("setup");
+	  tic("incremental");
+
+	  if (!(batch_processing || no_optimization)) {
+		slam.update();
+	  }
+
+	  toc("incremental");
+
+	  if (save_stats) {
+		stats.resize(step+1);
+		stats[step].time = toc(t0);
+		stats[step].chi2 = slam.normalized_chi2();
+	  }
+
+	  // visualization is not counted in timing
+	  if (!(batch_processing || no_optimization)) {
+		visualize(step);
+	  }
+	}
+  
+  visualize(step-1);
+
+  if (!no_optimization) {
+    if (batch_processing) {
+      tic("batch");
+      slam.batch_optimization();
+      toc("batch");
+    } else {
+      // end with a batch step/relinearization
+      prop.mod_batch = 1;
+      slam.set_properties(prop);
+      slam.update();
+    }
+  }
+
+  visualize(step-1);
+}
+
+/**
  * The actual processing of data, in separate thread if GUI enabled.
  */
 int process(void* unused) {
-  // parse all data and get into suitable format for incremental processing
-  Loader loader(fname, parse_num_lines, prop.verbose);
 
   // incrementally process data
   slam.set_properties(prop);
-  incremental_slam(loader);
+  incremental_slam();
 
   toc("all");
 
@@ -391,7 +417,6 @@ int process(void* unused) {
     if (!batch_processing) {
       cout << endl;
     }
-    cout << endl;
     double accumulated = tictoc("setup") + tictoc("incremental") + tictoc("batch");
     cout << "Accumulated computation time: " << accumulated << "s" << endl;
     cout << "(Overall execution time: " << tictoc("all") << "s)" << endl;
@@ -410,10 +435,14 @@ int process(void* unused) {
     cout << endl;
   }
 
+
 #ifdef USE_GUI
   if (use_gui) {
     while (true) {
-      usleep(100000);
+      if (viewer.exit_requested()) {
+        exit(0);
+      }
+      SDL_Delay(100);
     }
   }
 #endif
@@ -429,12 +458,25 @@ int main(int argc, char* argv[]) {
   tic("all");
 
   cout << endl;
-  cout << "Incremental Smoothing and Mapping (iSAM) version 1.3" << endl;
+  cout << "Incremental Smoothing and Mapping (iSAM) version 1.4" << endl;
   cout << "(C) 2009-2010 Massachusetts Institute of Technology" << endl;
   cout << "Michael Kaess and John J. Leonard" << endl;
   cout << endl;
 
   process_arguments(argc, argv);
+
+  if (!prop.quiet) {
+    cout << "Reading " << fname;
+    if (parse_num_lines>0) {
+      cout << " (only " << parse_num_lines << " lines)";
+    }
+    cout << endl;
+  }
+  // parse all data and get into suitable format for incremental processing
+  Loader loader_(fname, parse_num_lines, prop.verbose);
+  loader = &loader_;
+  loader_.print_stats();
+  cout << endl;
 
   if (!prop.quiet) {
     if (batch_processing) {
@@ -449,16 +491,15 @@ int main(int argc, char* argv[]) {
     cout << endl;
   }
 
-  if (!prop.quiet) {
-    cout << "Reading " << fname;
-    if (parse_num_lines>0) {
-      cout << " (only " << parse_num_lines << " lines)";
-    }
-    cout << endl;
-  }
-
 #ifdef USE_GUI
   if (use_gui) {
+    cout << "3D viewer:\n";
+    cout << "  Exit: Esc or \"q\"\n";
+    cout << "  Reset view: \"r\"\n";
+    cout << "  Rotate: left mouse button\n";
+    cout << "  Translate: middle mouse button or CTRL+left mouse button\n";
+    cout << "  Scale: right mouse button or SHIFT+left mouse button or mouse wheel\n";
+    cout << endl;
     // process will be run in separate thread
     viewer.init(process);
   } else {

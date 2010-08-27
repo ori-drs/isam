@@ -2,7 +2,7 @@
  * @file Loader.h
  * @brief Loading files with constraints/factors.
  * @author Michael Kaess
- * @version $Id: Loader.h 2858 2010-08-20 19:48:30Z kaess $
+ * @version $Id: Loader.h 2922 2010-08-27 05:42:42Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -131,6 +131,11 @@ public:
    * @param verbose Print constraints.
    */
   Loader(const char* fname, int num_lines, bool verbose);
+
+  /**
+   * Print statistics about loaded data.
+   */
+  void print_stats() const;
 
   /**
    * Number of time steps in data loaded.

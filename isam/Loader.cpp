@@ -2,7 +2,7 @@
  * @file Loader.cpp
  * @brief Loading files with constraints/factors.
  * @author Michael Kaess
- * @version $Id: Loader.cpp 2885 2010-08-23 03:53:45Z kaess $
+ * @version $Id: Loader.cpp 2922 2010-08-27 05:42:42Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -243,6 +243,16 @@ Loader::Loader(const char* fname, int num_lines, bool verbose) {
     i++;
   }
   fclose(in);
+}
+
+void Loader::print_stats() const {
+  int n = num_steps();
+  cout << "Number of poses: " << n << endl;
+  if (_point_nodes.size()>0) {
+    cout << "Number of landmarks: " << _num_points[n-1] << endl;
+    cout << "Number of measurements: " << _num_measurements[n-1] << endl;
+  }
+  cout << "Number of constraints: " << _num_constraints[n-1] << endl;
 }
 
 const vector<Pose3d> Loader::poses(unsigned int step) const {

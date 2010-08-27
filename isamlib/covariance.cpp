@@ -2,7 +2,7 @@
  * @file covariance.cpp
  * @brief Recovery of marginal covariance matrix, for details see Kaess09ras.
  * @author Michael Kaess
- * @version $Id: covariance.cpp 2736 2010-08-04 20:24:05Z kaess $
+ * @version $Id: covariance.cpp 2921 2010-08-27 04:23:38Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -154,12 +154,12 @@ list<Matrix> cov_marginal(const SparseMatrix& R, const index_lists_t& index_list
     int n = R.num_cols();
     for (int r=n_indices-1; r>=0; r--) {
       for (int c=n_indices-1; c>=r; c--) {
-        C(r,c) = recover(R, n, indices[r], indices[c]);
+        C.set(r, c, recover(R, n, indices[r], indices[c]));
       }
     }
     for (unsigned int r=1; r<n_indices; r++) {
       for (unsigned int c=0; c<r; c++) {
-        C(r,c) = C(c,r);
+        C.set(r, c, C(c,r));
       }
     }
     Cs.push_back(C);

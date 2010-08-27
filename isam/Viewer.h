@@ -2,7 +2,7 @@
  * @file Viewer.h
  * @brief 3D visualization.
  * @author Michael Kaess
- * @version $Id: Viewer.h 2872 2010-08-21 21:11:59Z kaess $
+ * @version $Id: Viewer.h 2918 2010-08-26 20:02:13Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -41,15 +41,41 @@ public:
   void init(int (*process)(void*));
 
   /**
-   *
+   * Adds or overwrites a collection of nodes (poses, landmarks...).
+   * @param nodes Vector of nodes.
+   * @param id Collection id (also determines color).
+   * @param name Collection name.
+   * @param type Type of object (pose, tree etc.)
    */
   void set_nodes(const std::vector<isam::Pose3d>& nodes,
-      int id, const std::string& name, int type);
+                 int id, const std::string& name, int type);
 
   /**
-   *
+   * Adds or overwrites a collection of links
+   * (measurements, odometry constraints...).
+   * @param links Vector of links.
+   * @param id Collection id (also determines color).
+   * @param name Collection name.
+   * @param collection1 Links start from elements of this collection id.
+   * @param collection2 Links end at elements of this collection id.
    */
   void set_links(const std::vector<std::pair<int,int> >& links,
-      int id, const std::string& name, int collection1, int collection2);
+                 int id, const std::string& name, int collection1, int collection2);
+
+  /**
+   * Adds or overwrites a collection of covariances (2D or 3D)
+   * @param covariances Covariances matrices in same order as elements they refer to.
+   * @param id Collection id (also determines color).
+   * @param name Collection name.
+   * @param collection Collection number that the covariances refer to.
+   * @param is_3d True if 3D covariances.
+   */
+  void set_covariances(const std::list<isam::Matrix>& covariances,
+                       int id, char* name, int collection, bool is_3d) const;
+
+  /**
+   * Signals processing thread to quit upon user request through GUI.
+   */
+  bool exit_requested();
 
 };

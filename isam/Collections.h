@@ -2,7 +2,7 @@
  * @file Collections.h
  * @brief 3D visualization.
  * @author Michael Kaess
- * @version $Id: Collections.h 2839 2010-08-20 14:11:11Z kaess $
+ * @version $Id: Collections.h 2918 2010-08-26 20:02:13Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -27,6 +27,7 @@
 #pragma once
 
 #include <map>
+#include <list>
 #include <vector>
 #include <string>
 
@@ -59,6 +60,7 @@ public:
   virtual void draw();
 
   friend class LinkCollection;
+  friend class CovCollection;
 };
 
 class LinkCollection : public Collection {
@@ -69,6 +71,17 @@ class LinkCollection : public Collection {
 
 public:
   LinkCollection(int id, std::string name, const std::vector<std::pair<int,int> >& links, int col1, int col2);
+  virtual void draw();
+};
+
+class CovCollection : public Collection {
+  typedef std::list<isam::Matrix> covs_t;
+  covs_t covs;
+  int collection;
+  bool is_3d;
+
+public:
+  CovCollection(int id, std::string name, const std::list<isam::Matrix>& covs, int collection, bool is_3d);
   virtual void draw();
 };
 

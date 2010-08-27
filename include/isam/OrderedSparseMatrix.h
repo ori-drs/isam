@@ -2,7 +2,7 @@
  * @file OrderedSparseMatrix.h
  * @brief Adds column ordering to sparse matrix functionality for iSAM.
  * @author Michael Kaess
- * @version $Id: OrderedSparseMatrix.h 2782 2010-08-16 18:44:12Z kaess $
+ * @version $Id: OrderedSparseMatrix.h 2922 2010-08-27 05:42:42Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -36,7 +36,7 @@
 namespace isam {
 
 class OrderedSparseMatrix : public SparseMatrix {
-  int* _r_to_a; // (column) variable order
+  int* _r_to_a; // column variable order
   int* _a_to_r;
 
   /**
@@ -136,20 +136,19 @@ public:
   // new functions
 
   /**
-   *
-   * @return
+   * Return variable ordering
+   * @return Array of integers that specifies for each column in A
+   * which column it now corresponds to in R.
    */
   virtual const int* a_to_r() const;
 
   /**
-   *
-   * @return
+   * Return inverse variable ordering
+   * @return Array of integers that specifies for each column in R
+   * which column it originally came from in A.
    */
   virtual const int* r_to_a() const;
 
-//  virtual void reorder_cols(const int* order, bool absolute=false);
-//  virtual void reorder_cols(const int* order, OrderedSparseMatrix& A, bool absolute, bool reorder_rows = false, const int* row_order = NULL) const;
-//  virtual int* amd_order() const;
 };
 
 }

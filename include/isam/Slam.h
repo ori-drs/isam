@@ -2,7 +2,7 @@
  * @file Slam.h
  * @brief SLAM implementation using iSAM
  * @author Michael Kaess
- * @version $Id: Slam.h 2898 2010-08-24 01:06:18Z kaess $
+ * @version $Id: Slam.h 2920 2010-08-27 01:08:18Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -163,16 +163,16 @@ public:
   virtual Matrix marginal_covariance(const std::list<Node*>& nodes);
 
   /**
-   * Calculates the normalized chi-square value (sum of squared
+   * Calculates the normalized chi-square value (weighted sum of squared
    * errors divided by degrees of freedom [# measurements - # variables])
    * for the estimate x.
    */
   double normalized_chi2();
 
   /**
-   * Sum of squared errors at the current estimate.
+   * Weighted sum of squared errors at the current estimate.
    */
-  double sum_of_squared_errors();
+  double weighted_sum_of_squared_errors();
 
   /**
    * Returns the current factor matrix.
@@ -194,9 +194,9 @@ public:
 private:
 
   /**
-   * Evaluate the non-squared error function for the estimate x.
+   * Evaluate the weighted non-squared error function for the estimate x.
    */
-  Vector errors(const Vector& x);
+  Vector weighted_errors(const Vector& x);
 
   /**
    * Update estimate if delta_x present, and update linearization point if x0 present.

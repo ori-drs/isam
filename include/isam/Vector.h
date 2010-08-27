@@ -2,7 +2,7 @@
  * @file Vector.h
  * @brief Basic dense vector library.
  * @author Michael Kaess
- * @version $Id: Vector.h 2782 2010-08-16 18:44:12Z kaess $
+ * @version $Id: Vector.h 2921 2010-08-27 04:23:38Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -34,7 +34,15 @@ namespace isam {
 
 class Vector : public Matrix {
 public:
+  /**
+   * Create vector with one zero entry.
+   */
   Vector();
+
+  /**
+   * Convert matrix to vector.
+   * @param rhs Matrix that must have only one column.
+   */
   Vector(const Matrix& rhs);
 
   /**
@@ -57,30 +65,89 @@ public:
    * @param vec Vector to copy from.
    */
   Vector(int first, int num, const Vector& vec);
+
+  /**
+   * Destructor.
+   */
   ~Vector();
 
+  /**
+   * Return number of rows of vector.
+   */
   const int size() const;
 
+  /**
+   * Assignment operator.
+   */
   const Vector& operator= (const Vector& rhs);
-  double& operator()(int r);
+
+  /**
+   * Read entry.
+   * @param r Row of entry.
+   * @return Entry.
+   */
   const double& operator()(int r) const;
 
+  /**
+   * Add vectors.
+   */
   const Vector operator+(const Vector& rhs) const {return (Vector)Matrix::operator+(rhs);}
+
+  /**
+   * Subtract vectors.
+   */
   const Vector operator-(const Vector& rhs) const {return (Vector)Matrix::operator-(rhs);}
+
+  /**
+   * Unary minus, negate sign of all vector entries.
+   */
   const Vector operator-() const {return (Vector)Matrix::operator-();}
+
+  /**
+   * Multiply vectors element wise, vectors must be same length.
+   */
   const Vector operator*(const Vector& rhs) const;
 
+  /**
+   * Dot product.
+   */
   double dot(const Vector& rhs) const;
 
+  /**
+   * Create matrix with this vector as diagonal.
+   */
   const Matrix diag_matrix() const;
 
-  const double get(int r);
+  /**
+   * Set vector entry.
+   * @param r Row of entry.
+   * @param val New value of entry.
+   */
   const void set(int r, double val);
 
+  /**
+   * Element wise absolute value.
+   */
   const Vector abs() const;
+
+  /**
+   * Return maximum of all entries of vector.
+   */
   double max() const;
+
+  /**
+   * Return maximum of all absolute numbers in vector.
+   */
   double norm_inf() const;
+
+  /**
+   * Return squared norm of vector (sum of squares).
+   */
   double norm2() const;
+
+  /**
+   * Return vector norm (square root of sum of squares).
+   */
   double norm() const;
 
   /**
@@ -91,10 +158,35 @@ public:
   void add_new_rows(int num, int pos = -1);
 };
 
+/**
+ * Construct vector of given entries. Takes r additional entries.
+ * CAUTION: Make sure to explicitly specify floats ("1.0" instead of "1").
+ * @param r Number of rows of vector.
+ */
 Vector make_Vector(int r, ...); // make sure to explicitly specify floats ("1.0" instead of "1")
 
+/**
+ * Multiply matrix with vector.
+ * @param lhs Matrix.
+ * @param rhs Vector.
+ * @return lhs*rhs.
+ */
 const Vector operator*(const Matrix& lhs, const Vector& rhs);
+
+/**
+ * Divide vector by scalar.
+ * @param lhs Vector.
+ * @param rhs Scalar.
+ * @return lhs/rhs.
+ */
 const Vector operator/(const Vector& lhs, double rhs);
+
+/**
+ * Multiple scalar with vector.
+ * @param lhs Scalar.
+ * @param rhs Vector.
+ * @return lhs*rhs.
+ */
 const Vector operator*(double lhs, const Vector& rhs);
 
 }

@@ -2,7 +2,7 @@
  * @file Collections.cpp
  * @brief 3D visualization.
  * @author Michael Kaess
- * @version $Id: Collections.cpp 2885 2010-08-23 03:53:45Z kaess $
+ * @version $Id: Collections.cpp 2921 2010-08-27 04:23:38Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -26,6 +26,7 @@
 
 #include <vector>
 #include <map>
+#include <list>
 
 #if defined(__APPLE__) && defined(__MACH__)
 #include <OpenGL/gl.h>
@@ -36,6 +37,8 @@
 #endif
 
 #include "isam/Pose3d.h"
+#include "isam/SparseMatrix.h"
+#include "isam/Matrix.h"
 
 #include "Collections.h"
 
@@ -77,10 +80,10 @@ GLUquadricObj* getQuadric() {
   return quadric_internal;
 }
 
-void draw_tree(double x, double y, double z) {
+void draw_tree(const Point3d& point) {
   glPushAttrib(GL_CURRENT_BIT);
   glPushMatrix();
-  glTranslatef(x, y, z);
+  glTranslatef(point.x(), point.y(), point.z());
   glColor3f(139./255., 69./255., 19./255.);
   glPushMatrix();
   glTranslatef(0,0,0.01);
@@ -95,12 +98,12 @@ void draw_tree(double x, double y, double z) {
   glPopAttrib();
 }
 
-void draw_tetra(double x, double y, double z, double yaw, double pitch, double roll, double size, bool mark) {
+void draw_tetra(const Pose3d& pose, double size, bool mark) {
   glPushMatrix();
-  glTranslatef(x, y, z);
-  glRotatef(rad_to_degrees(yaw),  0., 0., 1.);
-  glRotatef(rad_to_degrees(pitch),0., 1., 0.);
-  glRotatef(rad_to_degrees(roll), 1., 0., 0.);
+  glTranslatef(pose.x(), pose.y(), pose.z());
+  glRotatef(rad_to_degrees(pose.yaw()),  0., 0., 1.);
+  glRotatef(rad_to_degrees(pose.pitch()),0., 1., 0.);
+  glRotatef(rad_to_degrees(pose.roll()), 1., 0., 0.);
 
   if (mark) {
 	  glPushAttrib(GL_ALL_ATTRIB_BITS);
@@ -155,6 +158,108 @@ void draw_tetra(double x, double y, double z, double yaw, double pitch, double r
   glPopMatrix();
 }
 
+// Calculate eigenvalues for 3x3 symmetric, non-singular matrix.
+void eigenvals(const Matrix& cov, double& eval1, double& eval2, double& eval3) {
+  double m = cov.trace()/3.;
+  Matrix b = cov - m*Matrix::eye(3);
+  double det_b = b(0,0)*b(1,1)*b(2,2) + b(0,1)*b(1,2)*b(2,0) + b(0,2)*b(1,0)*b(2,1)
+    - b(0,0)*b(1,2)*b(2,1) - b(0,1)*b(1,0)*b(2,2) - b(0,2)*b(1,1)*b(2,0);
+  double q = det_b/2;
+  double p = 0;
+  for (int i=0; i<3; i++) {
+    for (int j=0; j<3; j++) {
+      p = p + b(i,j)*b(i,j);
+    }
+  }
+  p = p/6.;
+  double phi = 0.;
+  if (fabs(q) <= fabs(p*sqrt(p))) {
+    phi = acos(q/(p*sqrt(p))) / 3.;
+    if (phi<0) {
+      phi=phi + M_PI / 3.;
+    }
+  }
+  double cphi = cos(phi);
+  double sphi3 = sqrt(3)*sin(phi);
+  eval1 = m + 2.*sqrt(p)*cphi;
+  eval2 = m - sqrt(p)*(cphi + sphi3);
+  eval3 = m - sqrt(p)*(cphi - sphi3);
+}
+
+// Calculate eigenvector for a given eigenvalue.
+Vector eigenvec(const Matrix& mat, double eval) {
+  Matrix a = mat - eval*Matrix::eye(3);
+  // zeroing out entries below diagonal is easy
+  SparseMatrix s = sparseMatrix_of_matrix(a);
+  s.triangulate_with_givens();
+  Vector res(3);
+  // multiple cases because underconstrained
+  if (s(0,0)==0.) {
+    res.set(0, 1.); // arbitrary
+    res.set(1, 0.);
+    res.set(2, 0.);
+  } else {
+    if (s(1,1)!=0.) {
+      res.set(2, 1.); // arbitrary
+      // partial backsubstitution
+      res.set(1, -s(1,2)/s(1,1));
+      res.set(0, -(s(0,1)*res(1)+s(0,2)) / s(0,0));
+    } else {
+      res.set(1, 1.); // arbitrary
+      res.set(2, 0.);
+      res.set(0, -s(0,1)/s(0,0));
+    }
+  }
+  // normalize
+  return (res/res.norm());
+}
+
+void draw_ellipsoid(const Point3d& center, const Matrix& covariance, bool is_3d) {
+  Matrix cov = covariance;
+  if (!is_3d && covariance.num_cols()==3) {
+    // for 2D pose, remove orientation theta
+    cov = Matrix(0,0, 2,2, cov);
+  }
+  if (cov.num_cols()==2) {
+    // for 2x2 matrix, extend to 3x3
+    cov = (cov | Matrix::zeros(2,1)) ^ Matrix::zeros(1,3);
+    cov.set(2, 2, 0.001); // ellipsoid cannot have 0 extension, even if representing 2D ellipse
+  }
+  // cut Matrix to 3x3 (necessary for Pose3d)
+  cov = Matrix(0,0, 3,3, cov);
+
+  // eigenvectors and eigenvalues
+  double eval1, eval2, eval3;
+  eigenvals(cov, eval1, eval2, eval3);
+  Vector evec1 = eigenvec(cov, eval1);
+  Vector evec2 = eigenvec(cov, eval2);
+  Vector evec3 = eigenvec(cov, eval3);
+
+  // draw ellipsoid
+  double k = 1.; // scale factor
+  double radius1 = k * sqrt(eval1);
+  double radius2 = k * sqrt(eval2);
+  double radius3 = k * sqrt(eval3);
+  const double max_radius = 6.;
+  if (radius1<max_radius && radius2<max_radius && radius3<max_radius) {
+    GLUquadricObj *quadric = getQuadric();
+    glPushMatrix();
+    glTranslated(center.x(), center.y(), center.z());
+    GLdouble rotation[16] = {
+      evec1(0), evec1(1), evec1(2), 0.,
+      evec2(0), evec2(1), evec2(2), 0.,
+      evec3(0), evec3(1), evec3(2), 0.,
+      0., 0., 0., 1.
+    };
+    glMultMatrixd(rotation);
+    glScaled(radius1, radius2, radius3);
+    gluQuadricDrawStyle(quadric, GLU_FILL);
+    gluQuadricNormals(quadric, GLU_SMOOTH);
+    gluSphere(quadric, 0.3, 10, 10);
+    glPopMatrix();
+  }
+}
+
 ObjCollection::ObjCollection(int id, string name, int type, const vector<Pose3d>& nodes) : Collection(id, name, type) {
   maxid = nodes.size()-1;
   int i = 0;
@@ -172,8 +277,6 @@ void ObjCollection::draw() {
     glPushAttrib(GL_ALL_ATTRIB_BITS);
     glEnable(GL_RESCALE_NORMAL);
     glShadeModel(GL_SMOOTH);
-    glEnable(GL_LIGHTING);
-    glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
     break;
   }
@@ -186,10 +289,10 @@ void ObjCollection::draw() {
     bool is_last = (maxid == obj_id);
     switch(type) {
     case VIEWER_OBJ_POSE3D:
-      draw_tetra(obj.x(), obj.y(), obj.z(), obj.yaw(), obj.pitch(), obj.roll(), size, is_last);
+      draw_tetra(obj, size, is_last);
       break;
     case VIEWER_OBJ_TREE:
-      draw_tree(obj.x(), obj.y(), obj.z());
+      draw_tree(obj.trans());
       break;
     }
   }
@@ -229,5 +332,35 @@ void LinkCollection::draw() {
       }
     }
   }
+  glPopAttrib();
+}
+
+CovCollection::CovCollection(int id, string name, const list<Matrix>& covs, int collection, bool is_3d)
+  : Collection(id, name, type), covs(covs), collection(collection), is_3d(is_3d) {}
+
+void CovCollection::draw() {
+  glPushAttrib(GL_ALL_ATTRIB_BITS);
+  //    glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  int i=0;
+  for (covs_t::iterator it = covs.begin(); it != covs.end(); it++, i++) {
+    Matrix& cov = *it;
+    collections_t::iterator collection_it = collections.find(collection);
+    if (collection_it != collections.end()) {
+      const ObjCollection::objs_t& objs = ((ObjCollection*)collection_it->second)->objs;
+      ObjCollection::objs_t::const_iterator it = objs.find(i);
+      if (it != objs.end()) {
+        const Pose3d& obj = it->second;
+        // only draw if at least one end point is within the range
+        float alpha = 0.4;
+        float* rgb = &colors[3*(id%num_colors)];
+        glColor4f(rgb[0],rgb[1],rgb[2],alpha);
+        draw_ellipsoid(obj.trans(), cov, is_3d);
+      }
+    }
+  }
+  glDisable(GL_BLEND);
+  //    glEnable(GL_DEPTH_TEST);
   glPopAttrib();
 }

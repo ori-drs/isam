@@ -2,7 +2,7 @@
  * @file Slam.cpp
  * @brief SLAM implementation using iSAM
  * @author Michael Kaess
- * @version $Id: Slam.cpp 2898 2010-08-24 01:06:18Z kaess $
+ * @version $Id: Slam.cpp 2921 2010-08-27 04:23:38Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -74,19 +74,19 @@ void Slam::access_vectors(const Vector* delta_x, const Vector* x, const Vector* 
         } else {
           trans_idx = R.a_to_r()[idx];
         }
-        v(c) = v0(c) - (*delta_x)(trans_idx);
+        v.set(c, v0(c) - (*delta_x)(trans_idx));
       }
       if (x) {
-        v(c) = (*x)(idx);
+        v.set(c, (*x)(idx));
       }
       if (x0) {
-        v0(c) = (*x0)(idx);
+        v0.set(c, (*x0)(idx));
       }
       if (get_x) {
-        (*get_x)(idx) = v(c);
+        (*get_x).set(idx,  v(c));
       }
       if (get_x0) {
-        (*get_x0)(idx) = v0(c);
+        (*get_x0).set(idx, v0(c));
       }
     }
     if (delta_x || x) {
@@ -138,10 +138,6 @@ SparseSystem Slam::jac_func(const Vector& x0) {
   SparseSystem jac = jacobian();
   set_linearization(x_orig);
   return jac;
-}
-
-Vector Slam::f_func(const Vector& x0) {
-  return errors(x0);
 }
 
 Slam::Slam()
@@ -279,22 +275,25 @@ list<Matrix> Slam::marginal_covariance(const node_lists_t& node_lists) {
 
   vector < vector<int> > index_lists(node_lists.size());
 
-  int n=0;
-  for (node_lists_t::const_iterator it_list = node_lists.begin();
-       it_list != node_lists.end();
-       it_list++, n++) {
-    // assemble list of indices
-    vector<int> indices;
+  if (R.num_rows()>1) { // skip if R not calculated yet (eg. before batch step)
+    int n=0;
     const int* trans = R.a_to_r();
-    for (list<Node*>::const_iterator it = it_list->begin(); it!=it_list->end(); it++) {
-      int start = (*it)->_start;
-      for (int i=0; i<(*it)->_dim; i++) {
-        index_lists[n].push_back(trans[start+i]);
+    for (node_lists_t::const_iterator it_list = node_lists.begin();
+        it_list != node_lists.end();
+        it_list++, n++) {
+      // assemble list of indices
+      vector<int> indices;
+      for (list<Node*>::const_iterator it = it_list->begin(); it!=it_list->end(); it++) {
+        int start = (*it)->_start;
+        for (int i=0; i<(*it)->_dim; i++) {
+          index_lists[n].push_back(trans[start+i]);
+        }
       }
     }
+    return cov_marginal(R, index_lists);
   }
-
-  return cov_marginal(R, index_lists);
+  list<Matrix> empty_list;
+  return empty_list;
 }
 
 Matrix Slam::marginal_covariance(const list<Node*>& nodes) {
@@ -303,7 +302,7 @@ Matrix Slam::marginal_covariance(const list<Node*>& nodes) {
   return marginal_covariance(node_lists).front();
 }
 
-Vector Slam::errors(const Vector& x) {
+Vector Slam::weighted_errors(const Vector& x) {
   update_starts();
   // actual assembly of error vector follows
   int rows = dim_measure;
@@ -324,25 +323,25 @@ Vector Slam::errors(const Vector& x) {
       int start = node->_start;
       int size = node->dim();
       for (int i=0; i<size; i++) {
-        x_node(pos) = x(start+i);
+        x_node.set(pos, x(start+i));
         pos++;
       }
     }
     Vector err = factor->error(x_node); // already includes sqrtinf!
     for (int r=0; r<err.num_rows(); r++) {
-      error(row+r) = err(r);
+      error.set(row+r, err(r));
     }
     row += factor->dim();
   }
   return error;
 }
 
-double Slam::sum_of_squared_errors() {
-  return errors(get_estimate()).norm2();
+double Slam::weighted_sum_of_squared_errors() {
+  return weighted_errors(get_estimate()).norm2();
 }
 
 double Slam::normalized_chi2() {
-  return sum_of_squared_errors() / (double)(dim_measure - dim_nodes);
+  return weighted_sum_of_squared_errors() / (double)(dim_measure - dim_nodes);
 }
 
 const SparseSystem& Slam::get_R() const {
@@ -369,7 +368,7 @@ SparseSystem Slam::jacobian(int last_n) {
     Factor* factor = *it;
     Jacobian jac = factor->jacobian_internal(_prop.force_numerical_jacobian);
     for (int r=0; r<jac.residual.num_rows(); r++) {
-      rhs(row+r) = jac.residual(r);
+      rhs.set(row+r, jac.residual(r));
       rows[row+r] = new SparseVector(); // do not delete, will be pulled into SparseSystem below
     }
     for (Terms::iterator it=jac.terms.begin(); it!=jac.terms.end(); it++) {
@@ -389,16 +388,20 @@ SparseSystem Slam::jacobian(int last_n) {
 }
 
 void Slam::print_stats() {
+  double nnz = R.nnz();
+  double dim = dim_nodes;
+  double per_col = nnz/dim;
+  double fill_in = nnz/(dim*dim);
   cout << "iSAM statistics:" << endl;
   cout << "  Normalized chi-square value: " << normalized_chi2() << endl;
-  cout << "  Sum of squared errors: " << sum_of_squared_errors() << endl;
+  cout << "  Weighted sum of squared errors: " << weighted_sum_of_squared_errors() << endl;
   cout << "  Number of nodes: " << num_nodes() << endl;
   cout << "  Number of factors: " << num_factors() << endl;
   cout << "  Number of variables: " << dim_nodes << endl;
   cout << "  Number of measurements: " << dim_measure << endl;
   cout << "  Number of non-zero entries: " << R.nnz() << endl;
-  cout << "    per column: " << ((double)R.nnz()/(double)dim_nodes) << endl;
-  cout << "    fill in: " << ((double)R.nnz()/(double)(dim_nodes*dim_nodes)) << "%" << endl;
+  cout << "    per column: " << per_col << endl;
+  cout << "    fill in: " << fill_in << "%" << endl;
 }
 
 }

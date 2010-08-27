@@ -2,7 +2,7 @@
  * @file Viewer.cpp
  * @brief 3D visualization.
  * @author Michael Kaess
- * @version $Id: Viewer.cpp 2901 2010-08-24 04:53:01Z kaess $
+ * @version $Id: Viewer.cpp 2918 2010-08-26 20:02:13Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -57,8 +57,18 @@ SDL_Thread* thread;
 SDL_mutex* mutex;
 
 // set to true whenever new drawing primitives were added
+// multi-thread access variable, use mutex
 bool redisplay_requested = false;
+// set to true if processing thread should exit
+// multi-thread access variable, use mutex
+bool exit_request = false;
 
+// redraw only if something changed (only used by main thread)
+bool redraw = false;
+
+/**
+ * Redraw the scene into a GLList.
+ */
 void populateGLList() {
   glNewList(gl_list, GL_COMPILE_AND_EXECUTE);
   for (collections_t::iterator it = collections.begin(); it != collections.end(); it++) {
@@ -67,6 +77,9 @@ void populateGLList() {
   glEndList();
 }
 
+/**
+ * Draw everything, using the GLList if no change in the actual content.
+ */
 void drawGL() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glLoadIdentity();
@@ -92,6 +105,9 @@ void drawGL() {
   glCallList(gl_list);
 }
 
+/**
+ * Initialize OpenGL (only done once at beginning.
+ */
 void initGL() {
   glShadeModel(GL_SMOOTH);
   glEnable(GL_DEPTH_TEST);
@@ -101,14 +117,23 @@ void initGL() {
   //  glEnable(GL_CULL_FACE);
 }
 
+/**
+ * Close graphics window and tell process thread to quit, then clean up.
+ */
 void quit() {
   SDL_QuitSubSystem(SDL_INIT_VIDEO);
+  SDL_LockMutex(mutex);
+  exit_request = true;
+  SDL_UnlockMutex(mutex);
   SDL_WaitThread(thread, NULL);
   SDL_DestroyMutex(mutex);
   SDL_Quit();
 }
 
-void resize(GLsizei w, GLsizei h) {
+/**
+ * Resize the viewport, at creation, or after window was resized by user.
+ */
+void resize(GLsizei w, GLsizei h, int videoFlags) {
   if (w<10) {
     w = 10;
   }
@@ -117,38 +142,69 @@ void resize(GLsizei w, GLsizei h) {
   }
   width = w;
   height = h;
+
+  if (SDL_SetVideoMode(w, h, 0, videoFlags) == NULL) {
+    require(false, "Could not open GL window");
+  }
+
   glViewport(0, 0, w, h);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  gluPerspective(45.0, (float)w/(float)h, 0.1, 1000.0);
+  gluPerspective(45.0, (float)w/(float)h, 0.1, 10000.0);
   glMatrixMode(GL_MODELVIEW);
 }
 
-// translation and scaling is more sensitive if further away from
-// origin to allow for fast navigation
-double factor() {
+/**
+ * Provide scale factor to make translation and scaling more sensitive
+ * if further away from origin to allow for fast navigation.
+ */
+double factor(bool use_sqrt) {
   double distance = eye.trans().vector().norm();
-  return 1. + sqrt(distance) / 2.;
+  if (use_sqrt) {
+    return 1. + sqrt(distance) / 2.;
+  } else {
+    return 1. + distance / 20.;
+
+  }
 }
 
+/**
+ * Incrementally change rotation of camera/scene.
+ */
 void rotate(int dx, int dy) {
   eye.set_roll (eye.roll()  + dy);
   eye.set_pitch(eye.pitch() + dx);
+  redraw = true;
 }
 
+/**
+ * Incrementally change translation of camera/scene.
+ */
 void translate(int dx, int dy) {
-  eye.set_x(eye.x() - dx * 0.03*factor());
-  eye.set_y(eye.y() + dy * 0.03*factor());
+  eye.set_x(eye.x() - dx * 0.03*factor(false));
+  eye.set_y(eye.y() + dy * 0.03*factor(false));
+  redraw = true;
 }
 
+/**
+ * Incrementally change scale of scene.
+ */
 void scale(int dx, int dy) {
-  eye.set_z(eye.z() + dy * 0.1*factor());
+  eye.set_z(eye.z() + dy * 0.1*factor(true));
+  redraw = true;
 }
 
+/**
+ * Reset viewpoint to default starting position.
+ */
 void reset() {
   eye = Pose3d(0.0f, 0.0f, 100.0f, 0.0f, 0.0f, 0.0f);
+  redraw = true;
 }
 
+/**
+ * Process key press.
+ */
 void keyPress(SDL_keysym *keysym) {
   switch(keysym->sym) {
   case SDLK_ESCAPE:
@@ -163,14 +219,21 @@ void keyPress(SDL_keysym *keysym) {
   }
 }
 
+/**
+ * Process mouse wheel for scaling function.
+ */
 void processMouseWheel(int button) {
   if(button == SDL_BUTTON_WHEELUP) {
-    scale(0, -2.*factor());
+    scale(0, -2.*factor(true));
   } else if(button == SDL_BUTTON_WHEELDOWN) {
-    scale(0, 2.*factor());
+    scale(0, 2.*factor(true));
   }
 }
 
+/**
+ * Process mouse motion, allowing navigation with various
+ * mouse key and modifier key combinations.
+ */
 void mouseMotion(int x, int y) {
   static int x_pos = 0;
   static int y_pos = 0;
@@ -201,6 +264,9 @@ void mouseMotion(int x, int y) {
   y_pos = y;
 }
 
+/**
+ * Setup SDL, only called once at startup.
+ */
 int setupSDL() {
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     require(false, "Could not initialize SDL");
@@ -223,16 +289,9 @@ int setupSDL() {
   return videoFlags;
 }
 
-void initSDL(int w, int h, int videoFlags) {
-  if (SDL_SetVideoMode(w, h, 0, videoFlags) == NULL) {
-    require(false, "Could not open GL window");
-  }
-}
-
 int main_loop(void* unused) {
   int videoFlags = setupSDL();
-  initSDL(width, height, videoFlags);
-  resize(width, height);
+  resize(width, height, videoFlags);
   initGL();
 
   // allocate space for an OpenGL list
@@ -242,12 +301,13 @@ int main_loop(void* unused) {
   bool done = false;
   bool isActive = true;
   while(!done) {
+    // save CPU cycles: only redraw scene if change in viewpoint etc
+    redraw = false;
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
       case SDL_VIDEORESIZE:
-        initSDL(event.resize.w, event.resize.h, videoFlags);
-        resize(event.resize.w, event.resize.h);
+        resize(event.resize.w, event.resize.h, videoFlags);
         initGL();
         break;
       case SDL_KEYDOWN:
@@ -264,6 +324,7 @@ int main_loop(void* unused) {
           isActive = false;
         } else {
           isActive = true;
+          redraw = true;
         }
         break;
       case SDL_QUIT:
@@ -272,7 +333,15 @@ int main_loop(void* unused) {
       }
     }
 
-    if (isActive) {
+    // also redraw if scene itself changed;
+    // note that redisplay_requested is reset in populateGLList
+    SDL_LockMutex(mutex);
+    if (redisplay_requested) {
+      redraw = true;
+    }
+    SDL_UnlockMutex(mutex);
+
+    if (isActive && redraw) {
       drawGL();
       SDL_GL_SwapBuffers();
     }
@@ -323,4 +392,26 @@ void Viewer::set_links(const vector<pair<int,int> >& links, int id, const string
   collections.insert(make_pair(id, collection));
   redisplay_requested = true;
   SDL_UnlockMutex(mutex);
+}
+
+void Viewer::set_covariances(const list<Matrix>& covariances, int id, char* name, int col, bool is_3d) const {
+  SDL_LockMutex(mutex);
+  CovCollection* collection = new CovCollection(id, name, covariances, col, is_3d);
+  collections_t::iterator it = collections.find(id);
+  if (it!=collections.end()) {
+    // if previously created, deallocate and remove
+    Collection* c = it->second;
+    collections.erase(id);
+    delete c;
+  }
+  collections.insert(make_pair(id, collection));
+  redisplay_requested = true;
+  SDL_UnlockMutex(mutex);
+}
+
+bool Viewer::exit_requested() {
+  SDL_LockMutex(mutex);
+  bool ret = exit_request;
+  SDL_UnlockMutex(mutex);
+  return ret;
 }

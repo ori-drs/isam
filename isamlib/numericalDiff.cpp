@@ -2,7 +2,7 @@
  * @file numericalDiff.cpp
  * @brief Numerical differentiation.
  * @author Michael Kaess
- * @version $Id: numericalDiff.cpp 2901 2010-08-24 04:53:01Z kaess $
+ * @version $Id: numericalDiff.cpp 2921 2010-08-27 04:23:38Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -42,11 +42,11 @@ Matrix numericalDiff(const Function& func, Vector x0) {
   Matrix Jacobian(m,n); // result has one column per variable
   for (int j=0; j<n; j++) {
     Vector x_plus = x0;
-    x_plus(j) += epsilon;
+    x_plus.set(j, x_plus(j) + epsilon);
     Vector y_plus = func.evaluate(x_plus);
     Vector x_minus = x0;
 #ifdef SYMMETRIC
-    x_minus(j) -= epsilon;
+    x_minus.set(j, x_minus(j) - epsilon);
     Vector y_minus = func.evaluate(x_minus);
     // seems unnecessary, but significantly improves accuracy as it
     // takes into account that floating point cannot represent any
@@ -58,7 +58,7 @@ Matrix numericalDiff(const Function& func, Vector x0) {
     Vector dxj = (y_plus - y0) / (x_plus(j) - x0(j));
 #endif
     for (int i=0; i<m; i++) {
-      Jacobian(i,j) = dxj(i);
+      Jacobian.set(i, j, dxj(i));
     }
   }
   return Jacobian;

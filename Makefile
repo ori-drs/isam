@@ -22,6 +22,9 @@ doc:
 .PHONY: distclean
 distclean:
 	@rm -rf build doc/html lib bin release
+	@find . -name CMakeFiles |xargs rm -rf # clean up in case "cmake ." was called
+	@find . -name cmake_install.cmake -delete
+	@find . -name CMakeCache.txt -delete
 
 
 .PHONY: examples

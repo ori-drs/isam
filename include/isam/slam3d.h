@@ -2,7 +2,7 @@
  * @file slam3d.h
  * @brief Provides specialized nodes and factors for 3D SLAM
  * @author Michael Kaess
- * @version $Id: slam3d.h 2885 2010-08-23 03:53:45Z kaess $
+ * @version $Id: slam3d.h 2922 2010-08-27 05:42:42Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -59,9 +59,9 @@ public:
   }
   Vector basic_error(const std::vector<Vector>& vec) const {
     Vector err = vec[0] - prior.vector();
-    err(3) = standardRad(err(3));
-    err(4) = standardRad(err(4));
-    err(5) = standardRad(err(5));
+    err.set(3, standardRad(err(3)));
+    err.set(4, standardRad(err(4)));
+    err.set(5, standardRad(err(5)));
     return err;
   }
 };
@@ -97,8 +97,15 @@ public:
   void initialize() {
     Pose3d_Node* pose1 = dynamic_cast<Pose3d_Node*>(_nodes[0]);
     Pose3d_Node* pose2 = dynamic_cast<Pose3d_Node*>(_nodes[1]);
-    require(pose1->initialized(), "Pose3d_Pose3d_Factor: one node has to be initialized");
-    if (!pose2->initialized()) {
+    require(pose1->initialized() || pose2->initialized(),
+        "slam3d: Pose3d_Pose3d_Factor requires pose1 or pose2 to be initialized");
+    if (!pose1->initialized() && pose2->initialized()) {
+      // Reverse constraint 
+      Pose3d a = pose2->value();
+      Pose3d z;
+      Pose3d predict = a.oplus(z.ominus(measure));
+      pose1->init(predict);
+    } else if (pose1->initialized() && !pose2->initialized()) {
       Pose3d a = pose1->value();
       Pose3d predict = a.oplus(measure);
       pose2->init(predict);
@@ -129,9 +136,9 @@ public:
       predicted = p.vector();
     }
     Vector err = predicted.vector() - measure.vector();
-    err(3) = standardRad(err(3));
-    err(4) = standardRad(err(4));
-    err(5) = standardRad(err(5));
+    err.set(3, standardRad(err(3)));
+    err.set(4, standardRad(err(4)));
+    err.set(5, standardRad(err(5)));
     return err;
   }
 };

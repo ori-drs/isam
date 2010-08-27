@@ -2,7 +2,7 @@
  * @file SparseMatrix.h
  * @brief Sparse matrix functionality for iSAM
  * @author Michael Kaess
- * @version $Id: SparseMatrix.h 2782 2010-08-16 18:44:12Z kaess $
+ * @version $Id: SparseMatrix.h 2918 2010-08-26 20:02:13Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -231,5 +231,7 @@ public:
 
 const Vector operator*(const SparseMatrix& lhs, const Vector& rhs);
 Vector mul_SparseMatrixTrans_Vector(const SparseMatrix& lhs, const Vector& rhs);
+SparseMatrix sparseMatrix_of_matrix(const Matrix& m);
+Matrix matrix_of_sparseMatrix(const SparseMatrix& s);
 
 }

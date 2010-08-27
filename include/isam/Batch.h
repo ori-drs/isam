@@ -2,7 +2,7 @@
  * @file Batch.h
  * @brief General non-linear batch equation solvers.
  * @author Michael Kaess
- * @version $Id: Batch.h 2826 2010-08-20 03:17:43Z kaess $
+ * @version $Id: Batch.h 2920 2010-08-27 01:08:18Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -37,7 +37,7 @@ class BatchFunction {
 public:
   virtual ~BatchFunction() {}
   virtual SparseSystem jac_func(const Vector&) = 0;
-  virtual Vector f_func(const Vector&) = 0;
+  virtual Vector weighted_errors(const Vector&) = 0;
 };
 
 class Batch {

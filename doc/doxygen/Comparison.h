@@ -2,7 +2,7 @@
  * @file Comparison.h
  * @brief iSAM comparison in doxygen format
  * @author Michael Kaess
- * @version $Id: Comparison.h 2901 2010-08-24 04:53:01Z kaess $
+ * @version $Id: Comparison.h 2924 2010-08-27 15:47:17Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -48,27 +48,26 @@ Hydroid REMUS 100).
 
 \image html comparison_timing.png
 
-We use square root SAM (batch) as a basis for comparison, as it
-provides the exact least-squares solution. iSAM also provides the
-exact least-square solution, but with the caveat that the most
-recently added variables might not be converged yet, as
-relinearization is postponed to the next periodic batch step. Sparse
-Pose Adjustment (SPA2d) by Konolige et al. provides a faster
-implementation of square root SAM, but batch methods in general have
-to solve a problem of continously growing size, while iSAM avoids
-unncessary repetition of calculations. HOG-Man by Grisetti et al. also
-reduces unncessary computations using a hierarchical approach, but
-only provides an approximate solution. Note that it can provide the
-exact solution, but will then be slower again and essentially perform
-square root SAM.
+We use Square Root SAM as a basis for comparison, as it provides the
+exact least-squares solution. iSAM also provides the exact
+least-square solution, but with the caveat that the most recently
+added variables might not be converged yet, as relinearization is
+postponed to the next periodic batch step. Sparse Pose Adjustment
+(SPA2d) by Konolige et al. provides a faster implementation of square
+root SAM, but batch methods in general have to solve a problem of
+continously growing size, while iSAM avoids unncessary repetition of
+calculations. HOG-Man by Grisetti et al. also reduces unncessary
+computations using a hierarchical approach, but only provides an
+approximate solution. Note that HOG-Man can provide the exact
+solution, but will then be slower again and essentially perform square
+root SAM.
 
 We have omitted other state-of-the-art algorithms such as TORO and
-Treemap, as they have already been shown to be inferior to SPA2d
-(Konolige et al., IROS 2010). In particular, TORO does not correctly
-deal with angular measurements, which is especially problematic when
-used in 3D. In contrast, Square Root SAM and iSAM have already been
-shown to work in 3D vision applications in IJRR 2006 and my thesis
-work.
+Treemap, as they have already been shown to be inferior to SPA2d. In
+particular, TORO does not correctly deal with angular measurements,
+which is especially problematic when used in 3D. In contrast, Square
+Root SAM and iSAM have already been shown to work in 3D vision
+applications in IJRR 2006 and my thesis work.
 
 Note that iSAM can be slow on some simulated datasets, however, we
 have not encountered such data in real applications yet. Also, our

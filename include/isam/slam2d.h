@@ -2,7 +2,7 @@
  * @file slam2d.h
  * @brief Provides specialized nodes and factors for 2D SLAM.
  * @author Michael Kaess
- * @version $Id: slam2d.h 2898 2010-08-24 01:06:18Z kaess $
+ * @version $Id: slam2d.h 2922 2010-08-27 05:42:42Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -125,13 +125,13 @@ public:
   }
   Vector basic_error(const std::vector<Vector>& vec) const {
     Vector err = vec[0] - prior.vector();
-    err(2) = standardRad(err(2));
+    err.set(2, standardRad(err(2)));
     return err;
   }
   Jacobian jacobian() {
     Matrix M = _sqrtinf; // derivatives are all 1 (eye)
     Vector err = _nodes[0]->vector0() - prior.vector();
-    err(2) = standardRad(err(2));
+    err.set(2, standardRad(err(2)));
     Vector r = _sqrtinf * err;
     Jacobian jac(r);
     jac.add_term(_nodes[0], M);
@@ -177,9 +177,16 @@ public:
   void initialize() {
     Pose2d_Node* pose1 = dynamic_cast<Pose2d_Node*>(_nodes[0]);
     Pose2d_Node* pose2 = dynamic_cast<Pose2d_Node*>(_nodes[1]);
-    require(pose1->initialized(),
-        "slam2d: Pose2d_Pose2d_Factor requires pose1 to be initialized");
-    if (!pose2->initialized()) {
+    require(pose1->initialized() || pose2->initialized(),
+        "slam2d: Pose2d_Pose2d_Factor requires pose1 or pose2 to be initialized");
+
+    if (!pose1->initialized() && pose2->initialized()) {
+      // Reverse constraint 
+      Pose2d a = pose2->value();
+      Pose2d z;
+      Pose2d predict = a.oplus(z.ominus(measure));
+      pose1->init(predict);
+    } else if (pose1->initialized() && !pose2->initialized()) {
       Pose2d a = pose1->value();
       Pose2d predict = a.oplus(measure);
       pose2->init(predict);
@@ -211,7 +218,7 @@ public:
       predicted = p.vector();
     }
     Vector err = predicted.vector() - measure.vector();
-    err(2) = standardRad(err(2));
+    err.set(2, standardRad(err(2)));
     return err;
   }
   Jacobian jacobian() {
@@ -238,7 +245,7 @@ public:
       );
       M2 = _sqrtinf * M2;
       Vector err = p.vector() - measure.vector();
-      err(2) = standardRad(err(2));
+      err.set(2, standardRad(err(2)));
       Vector r = _sqrtinf * err;
       Jacobian jac(r);
       jac.add_term(pose1, M1);

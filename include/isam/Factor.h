@@ -2,7 +2,7 @@
  * @file Factor.h
  * @brief Graph factor for iSAM.
  * @author Michael Kaess
- * @version $Id: Factor.h 2821 2010-08-19 04:37:10Z kaess $
+ * @version $Id: Factor.h 2921 2010-08-27 04:23:38Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -93,7 +93,7 @@ public:
     if (*ptr_cost_func) {
       for (int i=0; i<err.size(); i++) {
         double val = err(i);
-        err(i) = ((val>=0)?1.:(-1.)) * sqrt((*ptr_cost_func)(val));
+        err.set(i, ((val>=0)?1.:(-1.)) * sqrt((*ptr_cost_func)(val)));
       }
     }
     return err;

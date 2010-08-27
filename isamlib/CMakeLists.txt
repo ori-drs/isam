@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 
 # find all source and header files
-FILE(GLOB SRCS RELATIVE "${PROJECT_SOURCE_DIR}/isamlib" "*.cpp")
-FILE(GLOB INCS RELATIVE "${PROJECT_SOURCE_DIR}/include/isam" "*.h")
+file(GLOB SRCS RELATIVE "${PROJECT_SOURCE_DIR}/isamlib" "*.cpp")
+file(GLOB INCS RELATIVE "${PROJECT_SOURCE_DIR}/include/isam" "*.h")
 
 # isamlib
 add_library(isamlib ${SRCS} ${INCS})
@@ -12,11 +12,11 @@ set_property(TARGET isamlib PROPERTY OUTPUT_NAME isam)
 find_path(CHOLMOD_INCLUDE "cholmod.h" PATH_SUFFIXES suitesparse ufsparse
   DOC "CHOLMOD header file (part of SuiteSparse or independent)")
 if(CHOLMOD_INCLUDE MATCHES "NOTFOUND")
-  message(SEND_ERROR "CHOLMOD header file not found, please provide the location manually")  
+  message(FATAL_ERROR "SuiteSparse/CHOLMOD not found, please see the installation instructions for iSAM.")  
 endif()
 find_library(CHOLMOD_LIBRARY cholmod DOC "CHOLMOD library location")
 if(CHOLMOD_LIBRARY MATCHES "NOTFOUND")
-  message(SEND_ERROR "CHOLMOD library not found, please provide the location manually")  
+  message(FATAL_ERROR "SuiteSparse/CHOLMOD not found, please see the installation instructions for iSAM.")  
 endif()
 # if static library (Macports), have to manually include a number of other libraries
 get_filename_component(CHOLMOD_LIB_EXT ${CHOLMOD_LIBRARY} EXT)

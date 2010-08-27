@@ -2,7 +2,7 @@
  * @file Batch.cpp
  * @brief General non-linear batch equation solvers.
  * @author Michael Kaess
- * @version $Id: Batch.cpp 2885 2010-08-23 03:53:45Z kaess $
+ * @version $Id: Batch.cpp 2921 2010-08-27 04:23:38Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -54,7 +54,7 @@ Vector Batch::gauss_newton_step(const SparseSystem& jacobian,
     reverse_order[order[i]] = i;
   }
   for (int i=0; i<nrows; i++) {
-    new_x(i) -= delta(reverse_order[i]);
+    new_x.set(i, new_x(i) - delta(reverse_order[i]));
   }
 
   return new_x;
