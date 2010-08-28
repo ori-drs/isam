@@ -6,7 +6,7 @@ project(isam)
 cmake_minimum_required (VERSION 2.6)
 
 if(CMAKE_BINARY_DIR STREQUAL PROJECT_SOURCE_DIR)
-  message(FATAL_ERROR "\nPlease do not build in the source directory, but instead build in a separate directory.\nThe iSAM Makefile provides useful shortcuts for using cmake. Type \"make distclean\" to remove any local cmake build files. Then simply type \"make\", which will call cmake in the build/ directory.")
+  message(FATAL_ERROR "\nPlease do not build in the source directory, but instead build in a separate directory. The iSAM Makefile provides useful shortcuts for using cmake. Type:\nmake distclean\nto remove any local cmake build files. Then simply type\nmake\nwhich will call cmake in the build/ directory.")
 endif()
 
 if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
