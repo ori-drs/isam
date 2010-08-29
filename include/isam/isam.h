@@ -2,7 +2,7 @@
  * @file isam.h
  * @brief Main isam header file.
  * @author Michael Kaess
- * @version $Id: isam.h 2903 2010-08-24 06:48:34Z kaess $
+ * @version $Id: isam.h 2928 2010-08-29 15:05:45Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -59,13 +59,6 @@ href="http://people.csail.mit.edu/kaess" target="_top">Michael
 Kaess</a> (kaess@mit.edu) and <a
 href="http://www.cc.gatech.edu/~dellaert" target="_top">Frank
 Dellaert</a> (dellaert@cc.gatech.edu) at Georgia Tech.
-
-
-@section intro_why Why Use iSAM?
-
-iSAM provides a range of advantages over other state-of-the-art SLAM
-algorithms. Please see the following page for a comparison to other
-algorithms: \ref Comparison.
 
 
 @section intro_copyright Copyright and License

@@ -2,7 +2,7 @@
  * @file util.h
  * @brief Basic utility functions that are independent of iSAM.
  * @author Michael Kaess
- * @version $Id: util.h 2825 2010-08-19 21:35:34Z kaess $
+ * @version $Id: util.h 2928 2010-08-29 15:05:45Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -103,10 +103,10 @@ inline double standardRad(double t) {
 
 #if 1
 #ifdef NDEBUG
-#define require(req,msg) if (!(req)) {fputs(msg, stderr);fputs("\n", stderr);exit(1);}
+#define require(req,msg) if (!(req)) {fputs(msg, stderr);fputs("\n\n", stderr);exit(1);}
 #else
 // cause a crash to allow backtracing
-#define require(req,msg) if (!(req)) {fputs(msg, stderr);fputs("\n", stderr); *((int*)NULL) = NULL; exit(1);}
+#define require(req,msg) if (!(req)) {fputs(msg, stderr);fputs("\n\n", stderr); *((int*)NULL) = NULL; exit(1);}
 #endif
 #else
 // remove all requirements (only slightly faster, not really worth it)

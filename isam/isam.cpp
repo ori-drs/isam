@@ -2,7 +2,7 @@
  * @file isam.cpp
  * @brief Main isam program.
  * @author Michael Kaess
- * @version $Id: isam.cpp 2922 2010-08-27 05:42:42Z kaess $
+ * @version $Id: isam.cpp 2928 2010-08-29 15:05:45Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
  * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
@@ -121,78 +121,78 @@ void process_arguments(int argc, char* argv[]) {
     // a colon after an option means that there is an extra
     // parameter to this option; 'W' is a reserved character
     switch (c) {
-      case 'h':
-      case '?':
-        cout << usage;
-        exit(0);
-        break;
-      case 'v':
-        prop.verbose = true;
-        break;
-      case 'q':
-        prop.quiet = true;
-        prop.verbose = false;
-        break;
-      case 'n':
-        parse_num_lines = atoi(optarg);
-        require(parse_num_lines>0, "Number of lines (-n) must be positive (>0).");
-        break;
-      case 'G':
+    case 'h':
+    case '?':
+      cout << usage;
+      exit(0);
+      break;
+    case 'v':
+      prop.verbose = true;
+      break;
+    case 'q':
+      prop.quiet = true;
+      prop.verbose = false;
+      break;
+    case 'n':
+      parse_num_lines = atoi(optarg);
+      require(parse_num_lines>0, "Number of lines (-n) must be positive (>0).");
+      break;
+    case 'G':
 #ifndef USE_GUI
-        require(false, "GUI support (-G) was disabled at compile time")
+      require(false, "GUI support (-G) was disabled at compile time")
 #endif
-        use_gui = true;
-        break;
-      case 'L':
+      use_gui = true;
+      break;
+    case 'L':
 #ifndef USE_LCM
-        require(false, "LCM support (-L) was disabled at compile time")
+      require(false, "LCM support (-L) was disabled at compile time")
 #endif
-        use_lcm = true;
-        break;
-      case 'S':
-        save_stats = true;
-        if (optarg!=NULL) {
-          strncpy(fname_stats, optarg, FNAME_MAX);
-        }
-        break;
-      case 'W':
-        write_result = true;
-        if (optarg!=NULL) {
-          strncpy(fname_result, optarg, FNAME_MAX);
-        }
-        break;
-      case 'C':
-        calculate_covariances = true;
-        break;
-      case 'B':
-        batch_processing = true;
-        break;
-      case 'F':
-        prop.force_numerical_jacobian = true;
-        break;
-      case 'N':
-        no_optimization = true;
-        break;
-      case 'd':
-        mod_draw = atoi(optarg);
-        require(mod_draw>0, "Number of steps between drawing (-d) must be positive (>0).");
-        break;
-      case 'u':
-        prop.mod_update = atoi(optarg);
-        require(prop.mod_update>0, "Number of steps between updates (-u) must be positive (>0).");
-        break;
-      case 'b':
-        prop.mod_batch = atoi(optarg);
-        require(prop.mod_batch>=0, "Number of steps between batch steps (-b) must be positive or zero (>=0).");
-        break;
-      case 's':
-        prop.mod_solve = atoi(optarg);
-        require(prop.mod_solve>0, "Number of steps between solving (-s) must be positive (>0).");
-        break;
-      case ':': // unknown option, from getopt
-        cout << usage;
-        exit(1);
-        break;
+      use_lcm = true;
+      break;
+    case 'S':
+      save_stats = true;
+      if (optarg!=NULL) {
+        strncpy(fname_stats, optarg, FNAME_MAX);
+      }
+      break;
+    case 'W':
+      write_result = true;
+      if (optarg!=NULL) {
+        strncpy(fname_result, optarg, FNAME_MAX);
+      }
+      break;
+    case 'C':
+      calculate_covariances = true;
+      break;
+    case 'B':
+      batch_processing = true;
+      break;
+    case 'F':
+      prop.force_numerical_jacobian = true;
+      break;
+    case 'N':
+      no_optimization = true;
+      break;
+    case 'd':
+      mod_draw = atoi(optarg);
+      require(mod_draw>0, "Number of steps between drawing (-d) must be positive (>0).");
+      break;
+    case 'u':
+      prop.mod_update = atoi(optarg);
+      require(prop.mod_update>0, "Number of steps between updates (-u) must be positive (>0).");
+      break;
+    case 'b':
+      prop.mod_batch = atoi(optarg);
+      require(prop.mod_batch>=0, "Number of steps between batch steps (-b) must be positive or zero (>=0).");
+      break;
+    case 's':
+      prop.mod_solve = atoi(optarg);
+      require(prop.mod_solve>0, "Number of steps between solving (-s) must be positive (>0).");
+      break;
+    case ':': // unknown option, from getopt
+      cout << usage;
+      exit(1);
+      break;
     }
   }
 
@@ -285,14 +285,14 @@ void visualize(unsigned int step) {
       lcm.send_nodes(loader->poses(step), id_trajectory, (char*)"Trajectory", 1);
       lcm.send_nodes(loader->points(step), id_landmarks, (char*)"Landmarks", 2);
       lcm.send_links(loader->constraints(step), id_constraints,
-                     (char*)"Odometry", id_trajectory, id_trajectory);
+          (char*)"Odometry", id_trajectory, id_trajectory);
       lcm.send_links(loader->measurements(step), id_measurements,
-                     (char*)"Measurements", id_trajectory, id_landmarks);
+          (char*)"Measurements", id_trajectory, id_landmarks);
       if (calculate_covariances) {
         lcm.send_covariances(pose_marginals,  id_pose_covs,
-                             (char*)"Pose Covs",  id_trajectory, loader->is_3d());
+            (char*)"Pose Covs",  id_trajectory, loader->is_3d());
         lcm.send_covariances(point_marginals, id_point_covs,
-                             (char*)"Point Covs", id_landmarks,  loader->is_3d());
+            (char*)"Point Covs", id_landmarks,  loader->is_3d());
       }
     }
   }
@@ -309,18 +309,18 @@ void visualize(unsigned int step) {
     const int id_point_covs = 5;
     if (use_gui && step%mod_draw==0) {
       viewer.set_nodes(loader->poses(step), id_trajectory,
-                       (char*)"Trajectory", VIEWER_OBJ_POSE3D);
+          (char*)"Trajectory", VIEWER_OBJ_POSE3D);
       viewer.set_nodes(loader->points(step), id_landmarks,
-                       (char*)"Landmarks", VIEWER_OBJ_TREE);
+          (char*)"Landmarks", VIEWER_OBJ_TREE);
       viewer.set_links(loader->constraints(step), id_constraints,
-                       "Odometry", id_trajectory, id_trajectory);
+          "Odometry", id_trajectory, id_trajectory);
       viewer.set_links(loader->measurements(step), id_measurements,
-                       "Measurements", id_trajectory, id_landmarks);
+          "Measurements", id_trajectory, id_landmarks);
       if (calculate_covariances) {
         viewer.set_covariances(pose_marginals,  id_pose_covs,
-                               (char*)"Pose Covs",  id_trajectory, loader->is_3d());
+            (char*)"Pose Covs",  id_trajectory, loader->is_3d());
         viewer.set_covariances(point_marginals, id_point_covs,
-                               (char*)"Point Covs", id_landmarks,  loader->is_3d());
+            (char*)"Point Covs", id_landmarks,  loader->is_3d());
       }
     }
   }
@@ -345,45 +345,45 @@ void check_quit() {
 void incremental_slam() {
   unsigned int step = 0;
 
-	for (; step<loader->num_steps(); step++) {
+    for (; step<loader->num_steps(); step++) {
 
-	  check_quit();
+      check_quit();
 
-	  double t0 = tic();
+      double t0 = tic();
 
-	  tic("setup");
+      tic("setup");
 
-	  // add new variables and constraints
-	  for(list<Node*>::const_iterator it = loader->nodes(step).begin(); it!=loader->nodes(step).end(); it++) {
-		if (prop.verbose) cout << **it << endl;
-		slam.add_node(*it);
-	  }
-	  for(list<Factor*>::const_iterator it = loader->factors(step).begin(); it!=loader->factors(step).end(); it++) {
-		if (prop.verbose) cout << **it << endl;
-		slam.add_factor(*it);
-	  }
+      // add new variables and constraints
+      for(list<Node*>::const_iterator it = loader->nodes(step).begin(); it!=loader->nodes(step).end(); it++) {
+        if (prop.verbose) cout << **it << endl;
+        slam.add_node(*it);
+      }
+      for(list<Factor*>::const_iterator it = loader->factors(step).begin(); it!=loader->factors(step).end(); it++) {
+        if (prop.verbose) cout << **it << endl;
+        slam.add_factor(*it);
+      }
 
-	  toc("setup");
-	  tic("incremental");
+      toc("setup");
+      tic("incremental");
 
-	  if (!(batch_processing || no_optimization)) {
-		slam.update();
-	  }
+      if (!(batch_processing || no_optimization)) {
+        slam.update();
+      }
 
-	  toc("incremental");
+      toc("incremental");
 
-	  if (save_stats) {
-		stats.resize(step+1);
-		stats[step].time = toc(t0);
-		stats[step].chi2 = slam.normalized_chi2();
-	  }
+      if (save_stats) {
+        stats.resize(step+1);
+        stats[step].time = toc(t0);
+        stats[step].chi2 = slam.normalized_chi2();
+      }
 
-	  // visualization is not counted in timing
-	  if (!(batch_processing || no_optimization)) {
-		visualize(step);
-	  }
-	}
-  
+      // visualization is not counted in timing
+      if (!(batch_processing || no_optimization)) {
+        visualize(step);
+      }
+    }
+
   visualize(step-1);
 
   if (!no_optimization) {
@@ -475,8 +475,10 @@ int main(int argc, char* argv[]) {
   // parse all data and get into suitable format for incremental processing
   Loader loader_(fname, parse_num_lines, prop.verbose);
   loader = &loader_;
-  loader_.print_stats();
-  cout << endl;
+  if (!prop.quiet) {
+    loader_.print_stats();
+    cout << endl;
+  }
 
   if (!prop.quiet) {
     if (batch_processing) {
