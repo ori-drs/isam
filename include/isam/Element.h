@@ -2,10 +2,10 @@
  * @file Element.h
  * @brief Basic functionality for nodes and factors of a graph.
  * @author Michael Kaess
- * @version $Id: Element.h 2885 2010-08-23 03:53:45Z kaess $
+ * @version $Id: Element.h 3216 2010-10-19 14:50:36Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -47,7 +47,7 @@ public:
 
   virtual int unique_id() {return _id;}
   virtual const char* name() const {return _name;}
-  virtual int dim() const {return _dim;}
+  inline int dim() const {return _dim;}
 
   virtual void write(std::ostream &out) const {
     out << name();

@@ -2,10 +2,10 @@
  * @file SparseMatrix.h
  * @brief Sparse matrix functionality for iSAM
  * @author Michael Kaess
- * @version $Id: SparseMatrix.h 2918 2010-08-26 20:02:13Z kaess $
+ * @version $Id: SparseMatrix.h 3160 2010-09-26 20:10:11Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -108,7 +108,7 @@ public:
    * @param col Column of entry.
    * @return Value of entry.
    */
-  virtual const double operator()(int row, int col) const;
+  virtual double operator()(int row, int col) const;
 
   /**
    * Set one entry of the matrix. Non-existing entries are created.

@@ -5,7 +5,7 @@
  * @version $Id: Node.h 2885 2010-08-23 03:53:45Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *

@@ -5,7 +5,7 @@
  * @version $Id: util.cpp 2736 2010-08-04 20:24:05Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *

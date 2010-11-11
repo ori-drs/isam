@@ -5,7 +5,7 @@
  * @version $Id: Pose3d.h 2896 2010-08-23 20:37:44Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *

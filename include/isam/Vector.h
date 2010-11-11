@@ -2,10 +2,10 @@
  * @file Vector.h
  * @brief Basic dense vector library.
  * @author Michael Kaess
- * @version $Id: Vector.h 2921 2010-08-27 04:23:38Z kaess $
+ * @version $Id: Vector.h 3160 2010-09-26 20:10:11Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -29,6 +29,7 @@
 #include <iostream>
 
 #include "Matrix.h"
+#include "util.h"
 
 namespace isam {
 
@@ -74,7 +75,7 @@ public:
   /**
    * Return number of rows of vector.
    */
-  const int size() const;
+  int size() const;
 
   /**
    * Assignment operator.
@@ -86,7 +87,10 @@ public:
    * @param r Row of entry.
    * @return Entry.
    */
-  const double& operator()(int r) const;
+  const double& operator()(int r) const {
+    require(r>=0 && r<num_rows(), "Vector::() index outside vector.");
+    return(_data[r]);
+  }
 
   /**
    * Add vectors.
@@ -123,7 +127,10 @@ public:
    * @param r Row of entry.
    * @param val New value of entry.
    */
-  const void set(int r, double val);
+  inline void set(int r, double val) {
+    require(r>=0 && r<num_rows(), "Vector::set() index outside vector.");
+    _data[r] = val; 
+  }
 
   /**
    * Element wise absolute value.

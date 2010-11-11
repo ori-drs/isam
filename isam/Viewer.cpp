@@ -2,10 +2,10 @@
  * @file Viewer.cpp
  * @brief 3D visualization.
  * @author Michael Kaess
- * @version $Id: Viewer.cpp 2918 2010-08-26 20:02:13Z kaess $
+ * @version $Id: Viewer.cpp 3216 2010-10-19 14:50:36Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -45,16 +45,9 @@
 using namespace std;
 using namespace isam;
 
-// current window size, with initial size given
+// current window size, with fixed initial size
 GLsizei width = 800;
 GLsizei height = 600;
-
-Pose3d eye;
-
-GLuint gl_list;
-
-SDL_Thread* thread;
-SDL_mutex* mutex;
 
 // set to true whenever new drawing primitives were added
 // multi-thread access variable, use mutex
@@ -65,6 +58,16 @@ bool exit_request = false;
 
 // redraw only if something changed (only used by main thread)
 bool redraw = false;
+
+// background color (gray scale 0 to 1)
+float bg_color = 0.0f;
+
+Pose3d eye;
+
+GLuint gl_list;
+
+SDL_Thread* thread;
+SDL_mutex* mutex;
 
 /**
  * Redraw the scene into a GLList.
@@ -82,6 +85,7 @@ void populateGLList() {
  */
 void drawGL() {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClearColor(bg_color, bg_color, bg_color, 1.0f);
   glLoadIdentity();
 
   /* Camera rotation */
@@ -203,6 +207,13 @@ void reset() {
 }
 
 /**
+ * Switch background between black and white (useful for screen shots).
+ */
+void toggle_color() {
+  bg_color = 1.0f - bg_color;
+}
+
+/**
  * Process key press.
  */
 void keyPress(SDL_keysym *keysym) {
@@ -213,6 +224,9 @@ void keyPress(SDL_keysym *keysym) {
     break;
   case SDLK_r:
     reset();
+    break;
+  case SDLK_c:
+    toggle_color();
     break;
   default:
     break;

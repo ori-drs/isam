@@ -2,10 +2,11 @@
  * @file slam2d.h
  * @brief Provides specialized nodes and factors for 2D SLAM.
  * @author Michael Kaess
- * @version $Id: slam2d.h 2922 2010-08-27 05:42:42Z kaess $
+ * @author Hordur Johannsson
+ * @version $Id: slam2d.h 3216 2010-10-19 14:50:36Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -147,6 +148,10 @@ public:
  * Odometry or loop closing constraint, from pose1 to pose2.
  */
 class Pose2d_Pose2d_Factor : public Factor {
+  Pose2d_Node* _pose1;
+  Pose2d_Node* _pose2;
+  Jacobian _jac;
+  
 public:
   const Pose2d measure;
   /**
@@ -161,7 +166,8 @@ public:
   Pose2d_Pose2d_Factor(Pose2d_Node* pose1, Pose2d_Node* pose2,
       const Pose2d& measure, const Matrix& sqrtinf,
       Pose2d_Node* anchor1 = NULL, Pose2d_Node* anchor2 = NULL)
-  : Factor("Pose2d_Pose2d_Factor", 3, sqrtinf), measure(measure) {
+    : Factor("Pose2d_Pose2d_Factor", 3, sqrtinf),
+    _pose1(pose1), _pose2(pose2), _jac(), measure(measure) {
     require((anchor1==NULL && anchor2==NULL) || (anchor1!=NULL && anchor2!=NULL),
         "slam2d: Pose2d_Pose2d_Factor requires either 0 or 2 anchor nodes");
     if (anchor1) { // offset between two relative pose graphs
@@ -173,15 +179,21 @@ public:
     }
     _nodes[0] = pose1;
     _nodes[1] = pose2;
+
+    _jac.residual = Vector(3);
+  
+    _jac.add_term(_pose1, Matrix(3,3));
+    _jac.add_term(_pose2, Matrix(3,3));
+
   }
   void initialize() {
-    Pose2d_Node* pose1 = dynamic_cast<Pose2d_Node*>(_nodes[0]);
-    Pose2d_Node* pose2 = dynamic_cast<Pose2d_Node*>(_nodes[1]);
+    Pose2d_Node* pose1 = _pose1;
+    Pose2d_Node* pose2 = _pose2;
     require(pose1->initialized() || pose2->initialized(),
         "slam2d: Pose2d_Pose2d_Factor requires pose1 or pose2 to be initialized");
 
     if (!pose1->initialized() && pose2->initialized()) {
-      // Reverse constraint 
+      // reverse constraint 
       Pose2d a = pose2->value();
       Pose2d z;
       Pose2d predict = a.oplus(z.ominus(measure));
@@ -221,38 +233,68 @@ public:
     err.set(2, standardRad(err(2)));
     return err;
   }
+      
   Jacobian jacobian() {
     if (_nodes.size()==4) { // symbolic available below only without anchor nodes
       return Factor::jacobian();
     } else {
-      Pose2d_Node* pose1 = dynamic_cast<Pose2d_Node*>(_nodes[0]);
-      Pose2d_Node* pose2 = dynamic_cast<Pose2d_Node*>(_nodes[1]);
-      Pose2d p1 = pose1->value0();
-      Pose2d p2 = pose2->value0();
+      const Pose2d & p1 = _pose1->value0();
+      const Pose2d & p2 = _pose2->value0();
       Pose2d p = p2.ominus(p1);
       double c = cos(p1.t());
       double s = sin(p1.t());
-      Matrix M1 = make_Matrix(3, 3,
+      const double * L = _sqrtinf.data();
+
+      Terms::iterator it=_jac.terms.begin();
+
+      double cL0 = c*L[0];
+      double sL0 = s*L[0];
+      double cL1 = c*L[1];
+      double sL1 = s*L[1];
+      double cL4 = c*L[4];
+      double sL4 = s*L[4];
+    
+      /*
+        Matrix M1 = make_Matrix(3, 3,
           -c, -s,  p.y(),
           s,  -c,  -p.x(),
           0.,  0., -1.
       );
-      M1 = _sqrtinf * M1;
-      Matrix M2 = make_Matrix(3, 3,
+      */
+      // written out for speed
+      double* m1 = (*it).term().rd();
+      m1[0] = -cL0 + sL1;  m1[1] = -sL0 -cL1;  m1[2] = p.y()*L[0]-p.x()*L[1]-L[2];
+      m1[3] =        sL4;  m1[4] =      -cL4;  m1[5] =           -p.x()*L[4]-L[5];
+      m1[6] = 0.0;         m1[7] = 0.0;        m1[8] = -L[8];
+      it++;
+
+      /*    
+        Matrix M2 = make_Matrix(3, 3,
           c,   s,   0.,
           -s,  c,   0.,
           0.,  0.,  1.
-      );
-      M2 = _sqrtinf * M2;
-      Vector err = p.vector() - measure.vector();
-      err.set(2, standardRad(err(2)));
-      Vector r = _sqrtinf * err;
-      Jacobian jac(r);
-      jac.add_term(pose1, M1);
-      jac.add_term(pose2, M2);
-      return jac;
+        );
+      */
+      // written out for speed
+      double* m2 = (*it).term().rd();
+      m2[0] = cL0 - sL1;   m2[1] = sL0 + cL1;    m2[2] = L[2];
+      m2[3] =     - sL4;   m2[4] =       cL4;    m2[5] = L[5];
+      m2[6] = 0.0;         m2[7] = 0.0;          m2[8] = L[8];
+    
+      double dx = p.x() - measure.x();
+      double dy = p.y() - measure.y();
+      double dt = standardRad(p.t() - measure.t());
+    
+      double* rr = _jac.residual.rd();
+    
+      rr[0] = L[0]*dx + L[1]*dy + L[2]*dt;
+      rr[1] =           L[4]*dy + L[5]*dt;
+      rr[2] =                     L[8]*dt;
+  
+      return _jac;
     }
   }
+  
   void write(std::ostream &out) const {
     Factor::write(out);
     out << " " << measure << " " << sqrtinf_to_string(_sqrtinf);

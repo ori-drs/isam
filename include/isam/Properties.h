@@ -2,10 +2,10 @@
  * @file Properties.h
  * @brief Properties class for easy access to internal parameters.
  * @author Michael Kaess
- * @version $Id: Properties.h 2839 2010-08-20 14:11:11Z kaess $
+ * @version $Id: Properties.h 3165 2010-09-27 04:08:25Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -62,11 +62,11 @@ public:
     force_numerical_jacobian(false),
 
     epsilon(1e-4),
-    max_iterations(0),
+    max_iterations(20),
 
     mod_update(1),
     mod_batch(100),
-    mod_solve(10)
+    mod_solve(1)
   {}
 };
 

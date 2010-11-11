@@ -2,10 +2,10 @@
  * @file Collections.cpp
  * @brief 3D visualization.
  * @author Michael Kaess
- * @version $Id: Collections.cpp 2921 2010-08-27 04:23:38Z kaess $
+ * @version $Id: Collections.cpp 3216 2010-10-19 14:50:36Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -60,12 +60,12 @@ float colors[] = {
   1.0, 0.0, 0.5,
   0.0, 0.5, 1.0,
   0.0, 1.0, 0.5,
-	1.0, 0.5, 0.5, 
-	0.5, 1.0, 0.5, 
-	0.5, 0.5, 1.0, 
-	0.5, 0.5, 1.0,
-	0.5, 1.0, 0.5,
-	0.5, 0.5, 1.0
+  1.0, 0.5, 0.5, 
+  0.5, 1.0, 0.5, 
+  0.5, 0.5, 1.0, 
+  0.5, 0.5, 1.0,
+  0.5, 1.0, 0.5,
+  0.5, 0.5, 1.0
 };
 const int num_colors = sizeof(colors)/(3*sizeof(float));
 
@@ -106,10 +106,10 @@ void draw_tetra(const Pose3d& pose, double size, bool mark) {
   glRotatef(rad_to_degrees(pose.roll()), 1., 0., 0.);
 
   if (mark) {
-	  glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     gluSphere(getQuadric(), size*1.5, 5, 5);
-	  glPopAttrib();
+    glPopAttrib();
   }
   glBegin(GL_POLYGON);
   glVertex3f(size,0.0,0.0);

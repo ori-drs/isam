@@ -2,10 +2,10 @@
  * @file Matrix.cpp
  * @brief Basic dense matrix library.
  * @author Michael Kaess
- * @version $Id: Matrix.cpp 2921 2010-08-27 04:23:38Z kaess $
+ * @version $Id: Matrix.cpp 3160 2010-09-26 20:10:11Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -121,10 +121,6 @@ Matrix::~Matrix(){
   delete[] _data;
 }
 
-const double* Matrix::data() const {
-  return _data;
-}
-
 void Matrix::print() const {
   for (int r=0; r<num_rows(); r++) {
     for (int c=0; c<num_cols(); c++) {
@@ -141,11 +137,6 @@ const Matrix& Matrix::operator= (const Matrix& rhs) {
   _init(rhs.num_rows(), rhs.num_cols());
   memcpy(_data, rhs._data, num_rows()*num_cols()*sizeof(double));
   return *this;
-}
-
-const double& Matrix::operator()(int r, int c) const {
-  require(r>=0 && c>=0 && r<_num_rows && c<_num_cols, "Matrix::() index outside matrix.");
-  return(_data[r*_num_cols+c]);
 }
 
 const Matrix Matrix::operator| (const Matrix& rhs) const {
@@ -209,7 +200,7 @@ const Matrix Matrix::operator*(const Matrix& rhs) const {
   return M;
 }
 
-const void Matrix::set(int r, int c, double val) {
+void Matrix::set(int r, int c, double val) {
   require(r>=0 && c>=0 && r<_num_rows && c<_num_cols, "Matrix::set() index outside matrix.");
   _data[r*_num_cols+c] = val;
 }
@@ -224,7 +215,7 @@ const Matrix Matrix::transpose() const {
   return M;
 }
 
-const double Matrix::trace() const {
+double Matrix::trace() const {
   require(num_rows()==num_cols(), "Matrix::trace: requires square matrix");
   double trace = 0.;
   for (int r=0; r<num_rows(); r++) {

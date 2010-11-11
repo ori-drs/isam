@@ -2,7 +2,7 @@
  * @file anchorNodes.cpp
  * @brief Multiple relative pose graphs with relative constraints.
  * @author Michael Kaess
- * @version $Id: anchorNodes.cpp 2839 2010-08-20 14:11:11Z kaess $
+ * @version $Id: anchorNodes.cpp 2958 2010-09-08 18:16:24Z kaess $
  *
  * For details on the concept of anchor nodes see:
  * “Multiple Relative Pose Graphs for Robust Cooperative Mapping”
@@ -11,7 +11,7 @@
  * online available at http://www.cc.gatech.edu/~kaess/pub/Kim10icra.html
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -44,28 +44,28 @@ int main() {
   // the example simpler.
   Slam slam;
 
-  Matrix Sigma = 0.01 * Matrix::eye(3);
+  Matrix sqrtinf = 10. * Matrix::eye(3);
 
   // first pose graph
   Pose2d prior_origin(0., 0., 0.);
   Pose2d_Node a0;
   slam.add_node(&a0);
-  Pose2d_Factor p_a0(&a0, prior_origin, Sigma);
+  Pose2d_Factor p_a0(&a0, prior_origin, sqrtinf);
   slam.add_factor(&p_a0);
   Pose2d odo(1., 0., 0.);
   Pose2d_Node a1;
   slam.add_node(&a1);
-  Pose2d_Pose2d_Factor o_a01(&a0, &a1, odo, Sigma);
+  Pose2d_Pose2d_Factor o_a01(&a0, &a1, odo, sqrtinf);
   slam.add_factor(&o_a01);
 
   // second pose graph
   Pose2d_Node b0;
   slam.add_node(&b0);
-  Pose2d_Factor p_b0(&b0, prior_origin, Sigma);
+  Pose2d_Factor p_b0(&b0, prior_origin, sqrtinf);
   slam.add_factor(&p_b0);
   Pose2d_Node b1;
   slam.add_node(&b1);
-  Pose2d_Pose2d_Factor o_b01(&b0, &b1, odo, Sigma);
+  Pose2d_Pose2d_Factor o_b01(&b0, &b1, odo, sqrtinf);
   slam.add_factor(&o_b01);
 
   slam.batch_optimization();
@@ -81,7 +81,7 @@ int main() {
   // prior (here origin); also initializes the anchor node
   Pose2d_Node anchor0;
   slam.add_node(&anchor0);
-  Pose2d_Factor p_anchor0(&anchor0, prior_origin, Sigma);
+  Pose2d_Factor p_anchor0(&anchor0, prior_origin, sqrtinf);
   slam.add_factor(&p_anchor0);
 
   // anchor node for second trajectory (as before)
@@ -93,7 +93,7 @@ int main() {
   // the order determines which trajectory the measurement originates
   // from; also, the first one already needs to be initialized (done
   // using prior above), the second one gets initialized if needed
-  Pose2d_Pose2d_Factor d_a1_b1(&a1, &b1, measure0, Sigma, &anchor0, &anchor1);
+  Pose2d_Pose2d_Factor d_a1_b1(&a1, &b1, measure0, sqrtinf, &anchor0, &anchor1);
   slam.add_factor(&d_a1_b1);
 
   slam.batch_optimization();
@@ -106,7 +106,7 @@ int main() {
   cout << "anchor1: " << anchor1.value() << endl;
 
   Pose2d measure1(0., 0.5, 0.); // conflicting measurement, want least squares
-  Pose2d_Pose2d_Factor d_a1_b1_2(&a1, &b1, measure1, Sigma, &anchor0, &anchor1);
+  Pose2d_Pose2d_Factor d_a1_b1_2(&a1, &b1, measure1, sqrtinf, &anchor0, &anchor1);
   slam.add_factor(&d_a1_b1_2);
 
   slam.batch_optimization();

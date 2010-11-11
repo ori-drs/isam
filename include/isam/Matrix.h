@@ -2,10 +2,10 @@
  * @file Matrix.h
  * @brief Basic dense matrix library.
  * @author Michael Kaess
- * @version $Id: Matrix.h 2921 2010-08-27 04:23:38Z kaess $
+ * @version $Id: Matrix.h 3160 2010-09-26 20:10:11Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -27,6 +27,7 @@
 #pragma once
 
 #include <iostream>
+#include "util.h"
 
 namespace isam {
 
@@ -39,6 +40,8 @@ private:
   void _init(int r, int c);
 
 public:
+  double* rd() {return _data;}
+  
   /**
    * Default constructor, yields matrix with a single entry set to 0.
    */
@@ -76,7 +79,7 @@ public:
    * Matrix content as array in row form.
    * @return Pointer to array of doubles, starting with first row.
    */
-  const double* data() const;
+  const double* data() const {return _data;}
 
   /**
    * Print content of matrix to screen.
@@ -89,7 +92,10 @@ public:
    * @param c Column of entry.
    * @return Entry.
    */
-  const double& operator()(int r, int c) const;
+  inline const double& operator()(int r, int c) const {
+    require(r>=0 && c>=0 && r<_num_rows && c<_num_cols, "Matrix::() index outside matrix.");
+    return(_data[r*_num_cols+c]);
+  }
 
   /**
    * Assignment operator.
@@ -136,7 +142,7 @@ public:
    * @param c Column of entry.
    * @param val New value of entry.
    */
-  const void set(int r, int c, double val);
+  void set(int r, int c, double val);
 
   /**
    * Transpose matrix.
@@ -146,7 +152,7 @@ public:
   /**
    * Calculate trace (sum of diagonal elements).
    */
-  const double trace() const;
+  double trace() const;
 
   /**
    * Return number of rows of matrix.

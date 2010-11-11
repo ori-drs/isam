@@ -2,10 +2,11 @@
  * @file SparseVector.cpp
  * @brief Part of sparse matrix functionality for iSAM.
  * @author Michael Kaess
- * @version $Id: SparseVector.cpp 2885 2010-08-23 03:53:45Z kaess $
+ * @author Hordur Johannsson
+ * @version $Id: SparseVector.cpp 3216 2010-10-19 14:50:36Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -158,8 +159,9 @@ SparseVector::~SparseVector() {
 
 const SparseVector& SparseVector::operator= (const SparseVector& vec) {
   // sanity check
-  if (this==&vec)
+  if (this==&vec) {
     return *this;
+  }
 
   // free old stuff
   _dealloc();
@@ -186,46 +188,48 @@ void SparseVector::copy_raw(int* indices, double* values) const {
   memcpy(values, _values, _nnz*sizeof(double));
 }
 
-void SparseVector::append(int idx, const double val) {
-  require(_nnz==0 || _indices[_nnz-1] < idx, "SparseVector::append: index has to be after last entry");
-  // enough space left?
-  if (_nnz+1 > _nnz_max) {
-    // automatic resizing, amortized cost O(1)
-    int new_nnz_max = _nnz_max*2;
-    _resize(new_nnz_max);
-  }
-  // insert new entry
-  _indices[_nnz] = idx;
-  _values[_nnz] = val;
-  _nnz++;
+bool SparseVector::set(int idx, const double val) {
+  return set(idx, &val, 1);
 }
 
-bool SparseVector::set(int idx, const double val) {
+bool SparseVector::set(int idx, const double* vals, int c) {
   bool created_entry = false;
   int n = 0;
-  // search closest entry
-  n = _search(idx);
+  
+  // First check if we can append
+  if (_nnz > 0 && idx > _indices[_nnz-1]) {
+    n = _nnz;
+  } else {
+    n = _search(idx);  // search closest entry
+  }
+  
   if (n<_nnz && _indices[n] == idx) {
     // entry exists? then overwrite!
-    _values[n] = val;
+    // BIG ASSUMPTION when writing multiple values:
+    // they either all exist or they don't
+    for (int i=0;i<c;i++) {
+      _values[n+i] = vals[i];
+    }
   } else {
-    // new entry has to be created
+    // new entries have to be created
     created_entry = true;
     // enough space left?
-    if (_nnz+1 > _nnz_max) {
+    if (_nnz+c > _nnz_max) {
       // automatic resizing, amortized cost O(1)
-      int new_nnz_max = _nnz_max*2;
+      int new_nnz_max = _nnz_max*2 + c;
       _resize(new_nnz_max);
     }
     // need to make space in the middle?
     if (n<_nnz) {
-      memmove(&(_indices[n+1]), &(_indices[n]), (_nnz-n)*sizeof(int));
-      memmove(&(_values[n+1]), &(_values[n]), (_nnz-n)*sizeof(double));
+      memmove(&(_indices[n+c]), &(_indices[n]), (_nnz-n)*sizeof(int));
+      memmove(&(_values[n+c]), &(_values[n]), (_nnz-n)*sizeof(double));
     }
     // insert new entry
-    _nnz++;
-    _indices[n] = idx;
-    _values[n] = val;
+    _nnz+=c;
+    for (int i=0;i<c;i++) {
+      _indices[n+i] = idx+i;
+      _values[n+i] = vals[i];
+    }
   }
 
   return created_entry;
@@ -288,38 +292,5 @@ void SparseVector::print() const {
   }
 }
 
-
-//////////////////////////////////////////////////////////////////////////////
-// iterator follows
-
-
-SparseVectorIter::SparseVectorIter(const SparseVector& sv) : s(sv), index(0) {}
-
-bool SparseVectorIter::valid() const {
-  return (index < s._nnz);
 }
 
-int SparseVectorIter::get() const {
-  require(index < s._nnz, "SparseVectorIter::get(): Index out of range.");
-  int tmp = s._indices[index];
-  return tmp;
-}
-
-int SparseVectorIter::get(double& val) const {
-  require(index < s._nnz, "SparseVectorIter::get(): Index out of range.");
-  val = s._values[index];
-  return s._indices[index];
-}
-
-double SparseVectorIter::get_val() const {
-  require(index < s._nnz, "SparseVectorIter::get_val(): Index out of range.");
-  return s._values[index];
-}
-
-void SparseVectorIter::next() {
-  if (index < s._nnz) {
-    index++;
-  }
-}
-
-}

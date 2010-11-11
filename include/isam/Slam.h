@@ -2,10 +2,10 @@
  * @file Slam.h
  * @brief SLAM implementation using iSAM
  * @author Michael Kaess
- * @version $Id: Slam.h 2920 2010-08-27 01:08:18Z kaess $
+ * @version $Id: Slam.h 3204 2010-10-06 16:02:07Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -275,20 +275,20 @@ private:
 
   // internal variable used for operations such as removing of parts of
   // the graph that currently cannot be done incrementally
-  bool require_batch;
+  bool _require_batch;
 
-  cost_func_t cost_func;
+  cost_func_t _cost_func;
 
   void update_starts();
 
-  Batch batch;
+  Batch _batch;
 
 protected:
-  int dim_nodes;
-  int dim_measure;
-  int num_new_measurements;
-  int num_new_rows;
-  SparseSystem R;
+  int _dim_nodes;
+  int _dim_measure;
+  int _num_new_measurements;
+  int _num_new_rows;
+  SparseSystem _R;
 
 };
 

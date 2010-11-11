@@ -2,10 +2,10 @@
  * @file Vector.cpp
  * @brief Basic dense vector library.
  * @author Michael Kaess
- * @version $Id: Vector.cpp 2921 2010-08-27 04:23:38Z kaess $
+ * @version $Id: Vector.cpp 3216 2010-10-19 14:50:36Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -57,7 +57,7 @@ Vector::Vector(int first, int num, const Vector& vec) : Matrix(num, 1) {
 Vector::~Vector(){
 }
 
-const int Vector::size() const {
+int Vector::size() const {
   return num_rows();
 }
 
@@ -68,11 +68,6 @@ const Vector& Vector::operator= (const Vector& rhs) {
   _init(rhs.num_rows(), 1);
   memcpy(_data, rhs._data, num_rows()*sizeof(double));
   return *this;
-}
-
-const double& Vector::operator() (int r) const {
-  require(r>=0 && r<num_rows(), "Vector::() index outside vector.");
-  return(_data[r]);
 }
 
 const Vector Vector::operator*(const Vector& rhs) const {
@@ -100,11 +95,6 @@ const Matrix Vector::diag_matrix() const {
     M.set(r, r, operator()(r));
   }
   return M;
-}
-
-const void Vector::set(int r, double val) {
-  require(r>=0 && r<num_rows(), "Vector::set() index outside vector.");
-  _data[r] = val;
 }
 
 const Vector Vector::abs() const {
@@ -144,7 +134,6 @@ double Vector::norm2() const {
 double Vector::norm() const {
   return std::sqrt(norm2());
 }
-
 
 void Vector::add_new_rows(int num, int pos) {
   if (pos<0) { //--

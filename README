@@ -1,6 +1,6 @@
 
 Incremental Smoothing and Mapping (iSAM) library
-Michael Kaess and John Leonard, 2010
+Michael Kaess, Hordur Johannsson, John Leonard, 2010
 
 isamlib/  - Source code for the iSAM library
 include/  - Header files for the iSAM library

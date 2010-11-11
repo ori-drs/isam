@@ -2,10 +2,10 @@
  * @file isam.cpp
  * @brief Main isam program.
  * @author Michael Kaess
- * @version $Id: isam.cpp 2928 2010-08-29 15:05:45Z kaess $
+ * @version $Id: isam.cpp 3364 2010-11-11 16:17:30Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -107,6 +107,9 @@ class Stats {
 public:
   double time;
   double chi2;
+  unsigned int nnz;
+  unsigned int nnodes;
+  unsigned int nconstraints;
 };
 vector<class Stats> stats;
 
@@ -219,7 +222,9 @@ void save_statistics(const string& fname) {
   ofstream out(fname.c_str(), ios::out | ios::binary);
   require(out, "Cannot open statistics file.");
   for (unsigned int i=0; i<stats.size(); i++) {
-    out << i << " " << stats[i].time << " " << stats[i].chi2 << endl;
+    out << i << " " << stats[i].time << " " << stats[i].chi2 << " " << stats[i].nnz;
+    out << " " << stats[i].nconstraints << " " << stats[i].nnodes;
+    out << endl;
   }
   out.close();
 }
@@ -227,7 +232,8 @@ void save_statistics(const string& fname) {
 /**
  * Calculate covariances for both points and poses up to the given time step.
  */
-void covariances(unsigned int step, list<Matrix>& point_marginals, list<Matrix>& pose_marginals) {
+void covariances(unsigned int step, list<Matrix>& point_marginals,
+                 list<Matrix>& pose_marginals) {
   // make sure return arguments are empty
   point_marginals.clear();
   pose_marginals.clear();
@@ -251,7 +257,8 @@ void covariances(unsigned int step, list<Matrix>& point_marginals, list<Matrix>&
   if (pose_marginals.size() > 0) {
     list<Matrix>::iterator center = pose_marginals.begin();
     for (unsigned int i=0; i<step; i++, center++);
-    point_marginals.splice(point_marginals.begin(), pose_marginals, center, pose_marginals.end());
+    point_marginals.splice(point_marginals.begin(), pose_marginals,
+                           center, pose_marginals.end());
   }
 }
 
@@ -354,11 +361,13 @@ void incremental_slam() {
       tic("setup");
 
       // add new variables and constraints
-      for(list<Node*>::const_iterator it = loader->nodes(step).begin(); it!=loader->nodes(step).end(); it++) {
+      for(list<Node*>::const_iterator it = loader->nodes(step).begin();
+          it!=loader->nodes(step).end(); it++) {
         if (prop.verbose) cout << **it << endl;
         slam.add_node(*it);
       }
-      for(list<Factor*>::const_iterator it = loader->factors(step).begin(); it!=loader->factors(step).end(); it++) {
+      for(list<Factor*>::const_iterator it = loader->factors(step).begin();
+          it!=loader->factors(step).end(); it++) {
         if (prop.verbose) cout << **it << endl;
         slam.add_factor(*it);
       }
@@ -376,6 +385,9 @@ void incremental_slam() {
         stats.resize(step+1);
         stats[step].time = toc(t0);
         stats[step].chi2 = slam.normalized_chi2();
+        stats[step].nnz = slam.get_R().nnz();
+        stats[step].nnodes = slam.get_nodes().size();
+        stats[step].nconstraints = slam.get_factors().size();
       }
 
       // visualization is not counted in timing
@@ -395,7 +407,9 @@ void incremental_slam() {
       // end with a batch step/relinearization
       prop.mod_batch = 1;
       slam.set_properties(prop);
+      tic("final");
       slam.update();
+      toc("final");
     }
   }
 
@@ -458,9 +472,9 @@ int main(int argc, char* argv[]) {
   tic("all");
 
   cout << endl;
-  cout << "Incremental Smoothing and Mapping (iSAM) version 1.4" << endl;
+  cout << "Incremental Smoothing and Mapping (iSAM) version 1.5" << endl;
   cout << "(C) 2009-2010 Massachusetts Institute of Technology" << endl;
-  cout << "Michael Kaess and John J. Leonard" << endl;
+  cout << "Michael Kaess, Hordur Johannsson, and John J. Leonard" << endl;
   cout << endl;
 
   process_arguments(argc, argv);
@@ -498,6 +512,7 @@ int main(int argc, char* argv[]) {
     cout << "3D viewer:\n";
     cout << "  Exit: Esc or \"q\"\n";
     cout << "  Reset view: \"r\"\n";
+    cout << "  Toggle background color \"c\"\n";
     cout << "  Rotate: left mouse button\n";
     cout << "  Translate: middle mouse button or CTRL+left mouse button\n";
     cout << "  Scale: right mouse button or SHIFT+left mouse button or mouse wheel\n";

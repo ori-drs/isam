@@ -2,10 +2,10 @@
  * @file Loader.cpp
  * @brief Loading files with constraints/factors.
  * @author Michael Kaess
- * @version $Id: Loader.cpp 2922 2010-08-27 05:42:42Z kaess $
+ * @version $Id: Loader.cpp 2955 2010-09-07 22:56:02Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -172,7 +172,10 @@ Loader::Loader(const char* fname, int num_lines, bool verbose) {
         unsigned int idx_x0, idx_x1;
         double x, y, t, sxx, sxy, sxt, syy, syt, stt;
         int res = sscanf(arguments, "%i %i %lg %lg %lg %lg %lg %lg %lg %lg %lg", &idx_x0, &idx_x1, &x, &y, &t, &sxx, &sxy, &sxt, &syy, &syt, &stt);
-        require(res==11, "Error while parsing ODOMETRY entry");
+        if (res!=11) {
+          cout << "Error while parsing ODOMETRY entry" << endl;
+          exit(1);
+        }
         Pose2d measurement(x, y, t);
         Matrix sqrtinf = make_Matrix(3, 3,
             sxx, sxy, sxt,
@@ -186,7 +189,10 @@ Loader::Loader(const char* fname, int num_lines, bool verbose) {
         unsigned int idx_x, idx_l;
         double x, y, sxx, sxy, syy;
         int res = sscanf(arguments, "%i %i %lg %lg %lg %lg %lg", &idx_x, &idx_l, &x, &y, &sxx, &sxy, &syy);
-        require(res==7, "Error while parsing LANDMARK entry");
+        if (res!=7) {
+          cout << "Error while parsing LANDMARK entry" << endl;
+          exit(1);
+        }
         Point2d measurement(x, y);
         Matrix sqrtinf = make_Matrix(2, 2,
             sxx, sxy,
@@ -200,7 +206,10 @@ Loader::Loader(const char* fname, int num_lines, bool verbose) {
             &idx_x0, &idx_x1, &x, &y, &z, &roll, &pitch, &yaw, // note reverse order of angles, also see covariance below
             &i11, &i12, &i13, &i14, &i15, &i16, &i22, &i23, &i24, &i25, &i26,
             &i33, &i34, &i35, &i36, &i44, &i45, &i46, &i55, &i56, &i66);
-        require(res==29 || res==8, "Error while parsing EDGE3 entry");
+        if (res!=29 && res!=8) {
+          cout << "Error while parsing EDGE3 entry" << endl;
+          exit(1);
+        }
         Pose3d delta;
         if (Y_FORWARD) {
           delta = Pose3d(y, -x, z, yaw, pitch, roll); // converting from external format with Y pointing forward

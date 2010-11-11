@@ -2,10 +2,10 @@
  * @file SparseMatrix.cpp
  * @brief Sparse matrix functionality for iSAM.
  * @author Michael Kaess
- * @version $Id: SparseMatrix.cpp 2921 2010-08-27 04:23:38Z kaess $
+ * @version $Id: SparseMatrix.cpp 3160 2010-09-26 20:10:11Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -119,7 +119,7 @@ const SparseMatrix& SparseMatrix::operator= (const SparseMatrix& mat) {
   return *this;
 }
 
-const double SparseMatrix::operator()(int row, int col) const {
+double SparseMatrix::operator()(int row, int col) const {
   require((row>=0) && (row<_num_rows) && (col>=0) && (col<_num_cols),
           "SparseMatrix::operator(): Index out of range.");
   return (*_rows[row])(col);
@@ -269,8 +269,10 @@ void SparseMatrix::apply_givens(int row, int col, double* c_givens, double* s_gi
   if (c_givens) *c_givens = c;
   if (s_givens) *s_givens = s;
 
-  SparseVector new_row_top;
-  SparseVector new_row_bot;
+  int n = row_bot.nnz() + row_top.nnz();
+
+  SparseVector_p new_row_top = new SparseVector(n);
+  SparseVector_p new_row_bot = new SparseVector(n);
   SparseVectorIter iter_top(row_top);
   SparseVectorIter iter_bot(row_bot);
   bool top_valid = iter_top.valid();
@@ -308,17 +310,20 @@ void SparseMatrix::apply_givens(int row, int col, double* c_givens, double* s_gi
     if (fabs(new_val_top) >= NUMERICAL_ZERO) {
       // append for O(1) operation - even O(log n) is too
       // slow here, because this is called extremely often!
-      new_row_top.append(idx, new_val_top);
+      new_row_top->append(idx, new_val_top);
     }
     if (fabs(new_val_bot) >= NUMERICAL_ZERO) {
-      new_row_bot.append(idx, new_val_bot);
+      new_row_bot->append(idx, new_val_bot);
     }
     top_valid = iter_top.valid();
     bot_valid = iter_bot.valid();
   }
 
-  *_rows[col] = new_row_top;
-  *_rows[row] = new_row_bot;
+  delete _rows[col];
+  delete _rows[row];
+
+  _rows[col] = new_row_top;
+  _rows[row] = new_row_bot;
   _rows[row]->remove(col); // by definition, this entry is exactly 0
 }
 
@@ -384,3 +389,4 @@ Matrix matrix_of_sparseMatrix(const SparseMatrix& s) {
 }
 
 }
+

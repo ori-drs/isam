@@ -2,10 +2,10 @@
  * @file Pose2d.h
  * @brief Simple 2D pose class.
  * @author Michael Kaess
- * @version $Id: Pose2d.h 2825 2010-08-19 21:35:34Z kaess $
+ * @version $Id: Pose2d.h 3349 2010-11-06 12:45:27Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -64,6 +64,8 @@ public:
   void set_t(double t) {_t = t;}
 
   Vector vector() const {
+    // disabled - faster but not portable, even using a "packed" struct
+    //    return Vector(3, &_x);
     Vector v = make_Vector(3, _x, _y, _t);
     return v;
   }

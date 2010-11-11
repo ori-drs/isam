@@ -2,10 +2,10 @@
  * @file Factor.h
  * @brief Graph factor for iSAM.
  * @author Michael Kaess
- * @version $Id: Factor.h 2921 2010-08-27 04:23:38Z kaess $
+ * @version $Id: Factor.h 3160 2010-09-26 20:10:11Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -49,19 +49,32 @@ public:
   Node* node() {return _node;}
   Matrix& term() {return _term;}
   Term(Node* node, const Matrix& term) : _node(node), _term(term) {}
+  Term(Node* node, const double * term, int r, int c) : _node(node), _term(r,c,term) {}
 };
 
 typedef std::list<Term> Terms;
 
 // Jacobian consisting of multiple blocks.
 class Jacobian {
+  int _dimtotal;
 public:
   Terms terms;
-  const Vector residual;
-  Jacobian(Vector& residual) : residual(residual) {}
+  //const 
+  Vector residual;
+  Jacobian() : _dimtotal(0), residual()  {}
+  Jacobian(Vector& residual) : _dimtotal(0), residual(residual) {}
+  inline Jacobian(const double * residual, int r) : _dimtotal(0), residual(r,residual) {}
   void add_term(Node* node, const Matrix& term) {
     terms.push_back(Term(node, term));
+  _dimtotal += node->dim();
   }
+
+  inline void add_term(Node* node, const double* term, int r, int c) {
+    terms.push_back(Term(node, term, r, c));
+  _dimtotal += node->dim();
+  }
+  
+  int dimtotal() const { return _dimtotal; }
 };
 
 // Factor of the graph of measurements between Nodes.

@@ -2,10 +2,10 @@
  * @file SparseVector.cpp
  * @brief part of sparse matrix functionality for iSAM
  * @author Michael Kaess
- * @version $Id: SparseVector.h 2782 2010-08-16 18:44:12Z kaess $
+ * @version $Id: SparseVector.h 3216 2010-10-19 14:50:36Z kaess $
  *
  * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess (kaess@mit.edu) and John J. Leonard (jleonard@mit.edu)
+ * Michael Kaess, Hordur Johannsson and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -25,6 +25,8 @@
  */
 
 #pragma once
+
+#include "isam/util.h"
 
 namespace isam {
 
@@ -63,6 +65,11 @@ public:
    */
   SparseVector();
 
+  SparseVector(int nnz_max) : _nnz(0), _nnz_max(nnz_max) {
+    _indices = new int[_nnz_max];
+    _values = new double[_nnz_max];
+  }
+  
   /**
    * Copy constructor - note that overwriting operator= is also necessary!
    * @param vec SparseVector to initialize from.
@@ -117,7 +124,19 @@ public:
    * @param idx Index of entry to add, has to be greater than last_idx().
    * @param val Value of new entry.
    */
-  void append(int idx, const double val = 0.);
+  inline void append(int idx, const double val = 0.) {
+    require(_nnz==0 || _indices[_nnz-1] < idx, "SparseVector::append: index has to be after last entry");
+
+    if (_nnz+1 > _nnz_max) {
+      // automatic resizing, amortized cost O(1)
+      int new_nnz_max = _nnz_max*2;
+      _resize(new_nnz_max);
+    }
+    // insert new entry
+    _indices[_nnz] = idx;
+    _values[_nnz] = val;
+    _nnz++;
+  }
 
   /**
    * Assign a value to a specific entry.
@@ -126,6 +145,16 @@ public:
    * @return True if new entry had to be created (needed to update row index)
    */
   bool set(int idx, const double val = 0.);
+  
+  
+  /**
+   * Assign a value to a specific entry.
+   * @param idx Index of entry to assign to.
+   * @param vals Array of values to assign.
+   * @param c Number of values in double array val.
+   * @return True if new entries had to be created
+   */
+  bool set(int idx, const double* vals, int c);
 
   /**
    * Remove an entry; simply ignores non-existing entries.
@@ -168,42 +197,59 @@ class SparseVectorIter {
   const SparseVector& s;
   int index;
 public:
-
   /**
    * Iterator for SparseVector.
    * @param sv SparseVector.
    */
-  SparseVectorIter(const SparseVector& sv);
+  inline SparseVectorIter(const SparseVector& sv) : s(sv), index(0) {}
 
   /**
    * Check if current element valid, ie. if we have not reached the end yet.
    * @return True if we still have a valid entry.
    */
-  bool valid() const;
+  inline bool valid() const {
+    return (index < s._nnz);
+  }
 
   /**
    * Get current element index.
    * @return Current element index.
    */
-  int get() const;
+  inline int get() const {
+    require(index < s._nnz, "SparseVectorIter::get(): Index out of range.");
+    int tmp = s._indices[index];
+    return tmp;
+  }
 
   /**
    * Get current element index and value.
    * @param val Current element value returned.
    * @return Current element index.
    */
-  int get(double& val) const;
+  inline int get(double& val) const {
+    require(index < s._nnz, "SparseVectorIter::get(): Index out of range.");
+    val = s._values[index];
+    return s._indices[index];
+  }
 
   /**
    * Get current element value.
    * @return Current element value returned.
    */
-  double get_val() const;
+  inline double get_val() const {
+    require(index < s._nnz, "SparseVectorIter::get_val(): Index out of range.");
+    return s._values[index];
+  }
 
   /**
    * Go to next element.
    */
-  void next();
+  inline void next() {
+    if (index < s._nnz) {
+      index++;
+    }
+  }
 };
 
 }
+
