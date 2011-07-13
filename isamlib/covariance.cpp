@@ -114,6 +114,7 @@ inline double sum_j(const SparseMatrix& R, int n, int l, int i) {
 }
 
 double recover(const SparseMatrix& R, int n, int i, int l) {
+  if (i>l) {int tmp=i; i=l; l=tmp;}
   int id = i*n + l; // flatten index for hash table
   umap::iterator it = entries.find(id);
   double res;
