@@ -2,10 +2,10 @@
  * @file Graph.h
  * @brief Basic graph for iSAM.
  * @author Michael Kaess
- * @version $Id: Graph.h 2736 2010-08-04 20:24:05Z kaess $
+ * @version $Id: Graph.h 4038 2011-02-26 04:31:00Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -38,6 +38,7 @@ namespace isam {
 class Graph {
   Graph(const Graph& rhs); // not allowed
   const Graph& operator= (const Graph& rhs); // not allowed
+protected:
   std::list<Node*> _nodes;
   std::list<Factor*> _factors;
 public:

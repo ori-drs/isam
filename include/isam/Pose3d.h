@@ -2,10 +2,10 @@
  * @file Pose3d.h
  * @brief 3D pose class.
  * @author Michael Kaess
- * @version $Id: Pose3d.h 2896 2010-08-23 20:37:44Z kaess $
+ * @version $Id: Pose3d.h 6234 2012-02-24 01:32:44Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -51,9 +51,10 @@
 #pragma once
 
 #include <cmath>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
 
 #include "util.h"
-#include "Vector.h"
 #include "Rot3d.h"
 #include "Pose2d.h"
 #include "Point3d.h"
@@ -61,6 +62,8 @@
 #include "Point2d.h"
 
 namespace isam {
+
+typedef Eigen::Matrix< double , 6 , 1> Vector6d;
 
 class Pose3d {
   friend std::ostream& operator<<(std::ostream& out, const Pose3d& p) {
@@ -71,14 +74,40 @@ class Pose3d {
   Point3d _t;
   Rot3d _rot;
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   static const int dim = 6;
   static const char* name() {
     return "Pose3d";
   }
 
-  Pose3d() {} // everything 0.
+  Pose3d() : _t(0,0,0), _rot(0,0,0) {}
+
   Pose3d(double x, double y, double z, double yaw, double pitch, double roll) : _t(x, y, z), _rot(yaw, pitch, roll) {}
-  Pose3d(const Vector& vec) : _t(vec(0), vec(1), vec(2)), _rot(vec(3), vec(4), vec(5)) {}
+
+  Pose3d(const Eigen::MatrixXd& m) {
+    if (m.rows()==6 && m.cols()==1) {
+      _t = Point3d(m(0), m(1), m(2));
+      _rot = Rot3d(m(3), m(4), m(5));
+    } else if (m.rows()==4 && m.cols()==4) {
+      // Convert a homogeneous 4x4 transformation matrix to a Pose3.
+      Eigen::Matrix4d wTo = m / m(3,3); // enforce T(3,3)=1
+      Eigen::Vector3d t = wTo.col(3).head(3);
+      Eigen::Matrix3d wRo = wTo.topLeftCorner(3,3);
+      _t = Point3d(t(0), t(1), t(2));
+      _rot = Rot3d(wRo);
+    } else {
+      require(false, "Pose3d constructor called with matrix of wrong dimension");
+    }
+  }
+
+  explicit Pose3d(const Eigen::Isometry3d & T) {
+    Eigen::Vector3d t(T.translation());
+    _t = Point3d(t(0), t(1), t(2));
+    _rot = Rot3d(T.rotation());
+  }
+
+  Pose3d(const Point3d& t, const Rot3d& rot) : _t(t), _rot(rot) {}
 
   double x() const {return _t.x();}
   double y() const {return _t.y();}
@@ -97,15 +126,28 @@ public:
   void set_pitch(double pitch) {_rot.set_pitch(pitch);}
   void set_roll (double roll)  {_rot.set_roll(roll);}
 
-  Vector vector() const {
-    return make_Vector(6, x(), y(), z(), yaw(), pitch(), roll());
+  Pose3d exmap(const Vector6d& delta) {
+    Pose3d res = *this;
+    res._t   = res._t.exmap(delta.head(3));
+    res._rot = res._rot.exmap(delta.tail(3));
+    return res;
+  }
+
+  Vector6d vector() const {
+    double Y, P, R;
+    // cheaper to recover ypr at once
+    _rot.ypr(Y, P, R);
+    Vector6d tmp;
+    tmp << x(), y(), z(), Y, P, R;
+    return tmp;
   }
 
   void set(double x, double y, double z, double yaw, double pitch, double roll) {
     _t = Point3d(x, y, z);
     _rot = Rot3d(yaw, pitch, roll);
   }
-  void set(const Vector& v) {
+
+  void set(const Vector6d& v) {
     _t = Point3d(v(0), v(1), v(2));
     _rot = Rot3d(standardRad(v(3)), standardRad(v(4)), standardRad(v(5)));
   }
@@ -128,38 +170,38 @@ public:
   }
 
   /**
-   * Convert a homogeneous 4x4 transformation matrix to a Pose3.
-   * @param wTo 4x4 transformation matrix.
-   */
-  Pose3d(const Matrix& wTo) {
-    Matrix T = wTo / wTo(3,3); // enforce T(3,3)=1
-    Matrix t = Matrix(0,3,3,1,T);
-    Matrix wRo = Matrix(0,0,3,3,T);
-    _t = Point3d(t(0,0), t(1,0), t(2,0));
-    _rot = Rot3d(wRo);
-  }
-
-  /**
    * Convert Pose3 to homogeneous 4x4 transformation matrix.
+   * The returned matrix is the object coordinate frame in the world
+   * coordinate frame. In other words it transforms a point in the object
+   * frame to the world frame.
+   *
    * @return wTo
    */
-  Matrix wTo() const {
-    Matrix R = _rot.wRo();
-    Matrix t = make_Matrix(3,1, x(), y(), z());
-    Matrix unit = Matrix::unit(4,3).transpose();
-    return ((R|t) ^ unit);
+  Eigen::Matrix4d wTo() const {
+    Eigen::Matrix4d T;
+    T.topLeftCorner(3,3) = _rot.wRo();
+    T.col(3).head(3) << x(), y(), z();
+    T.row(3) << 0., 0., 0., 1.;
+    return T;
   }
 
   /**
    * Convert Pose3 to homogeneous 4x4 transformation matrix. Avoids inverting wTo.
+   * The returned matrix is the world coordinate frame in the object
+   * coordinate frame. In other words it transforms a point in the world
+   * frame to the object frame.
+   *
    * @return oTw
    */
-  Matrix oTw() const {
-    Matrix oRw = _rot.wRo().transpose();
-    Matrix t = make_Matrix(3,1, x(), y(), z());
-    Matrix C = - oRw * t;
-    Matrix unit = Matrix::unit(4,3).transpose();
-    return ((oRw|C) ^ unit);
+  Eigen::Matrix4d oTw() const {
+    Eigen::Matrix3d oRw = _rot.wRo().transpose();
+    Eigen::Vector3d t(x(), y(), z());
+    Eigen::Vector3d C = - oRw * t;
+    Eigen::Matrix4d T;
+    T.topLeftCorner(3,3) = oRw;
+    T.col(3).head(3) = C;
+    T.row(3) << 0., 0., 0., 1.;
+    return T;
   }
 
   /**
@@ -193,14 +235,30 @@ public:
     return Point3dh(oTw() * p.vector());
   }
 
+
+  /**
+   * Project point into this coordinate frame.
+   * @param p Point to project
+   * @return Point p locally expressed in this frame.
+   */
   Point3d transform_to(const Point3d& p) const {
     return transform_to(Point3dh(p)).to_point3d();
   }
 
+  /**
+   * Project point from this coordinate frame.
+   * @param p Point to project
+   * @return Point p is expressed in the global frame.
+   */
   Point3dh transform_from(const Point3dh& p) const {
     return Point3dh(wTo() * p.vector());
   }
 
+  /**
+   * Project point from this coordinate frame.
+   * @param p Point to project
+   * @return Point p is expressed in the global frame.
+   */
   Point3d transform_from(const Point3d& p) const {
     return transform_from(Point3dh(p)).to_point3d();
   }

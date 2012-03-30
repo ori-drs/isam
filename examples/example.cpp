@@ -2,10 +2,10 @@
  * @file example.cpp
  * @brief Simple iSAM example with dynamic allocation.
  * @author Michael Kaess
- * @version $Id: example.cpp 2839 2010-08-20 14:11:11Z kaess $
+ * @version $Id: example.cpp 6377 2012-03-30 20:06:44Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -41,7 +41,7 @@ bin/example
 To compile without the iSAM cmake system:
 @verbatim
 cd examples
-c++ example.cpp ../lib/libisam.a -lcholmod -I../include
+c++ example.cpp ../lib/libisam.a -lcholmod -I../include -I/usr/include/eigen3
 @endverbatim
 
 examples/example.cpp :
@@ -53,6 +53,7 @@ examples/example.cpp :
 
 using namespace std;
 using namespace isam;
+using namespace Eigen;
 
 int main() {
   // instance of the main class that manages and optimizes the pose graph
@@ -61,8 +62,8 @@ int main() {
   // locally remember poses
   vector<Pose2d_Node*> pose_nodes;
 
-  Matrix sqrtinf3 = 10. * Matrix::eye(3);
-  Matrix sqrtinf2 = 10. * Matrix::eye(2);
+  Noise noise3 = Information(100. * eye(3));
+  Noise noise2 = Information(100. * eye(2));
 
   // create a first pose (a node)
   Pose2d_Node* new_pose_node = new Pose2d_Node();
@@ -73,7 +74,7 @@ int main() {
 
   // create a prior measurement (a factor)
   Pose2d origin(0., 0., 0.);
-  Pose2d_Factor* prior = new Pose2d_Factor(pose_nodes[0], origin, sqrtinf3);
+  Pose2d_Factor* prior = new Pose2d_Factor(pose_nodes[0], origin, noise3);
   // add it to the graph
   slam.add_factor(prior);
 
@@ -85,7 +86,7 @@ int main() {
 
     // connect to previous with odometry measurement
     Pose2d odometry(1., 0., 0.); // x,y,theta
-    Pose2d_Pose2d_Factor* constraint = new Pose2d_Pose2d_Factor(pose_nodes[i-1], pose_nodes[i], odometry, sqrtinf3);
+    Pose2d_Pose2d_Factor* constraint = new Pose2d_Pose2d_Factor(pose_nodes[i-1], pose_nodes[i], odometry, noise3);
     slam.add_factor(constraint);
   }
 
@@ -96,7 +97,7 @@ int main() {
   // create a pose and the landmark by a measurement
   Point2d measure(5., 3.); // x,y
   Pose2d_Point2d_Factor* measurement =
-    new Pose2d_Point2d_Factor(pose_nodes[1], new_point_node, measure, sqrtinf2);
+    new Pose2d_Point2d_Factor(pose_nodes[1], new_point_node, measure, noise2);
   slam.add_factor(measurement);
 
   // optimize the graph

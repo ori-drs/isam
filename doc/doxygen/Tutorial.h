@@ -2,10 +2,10 @@
  * @file Tutorial.h
  * @brief iSAM tutorial in doxygen format
  * @author Michael Kaess
- * @version $Id: Tutorial.h 2898 2010-08-24 01:06:18Z kaess $
+ * @version $Id: Tutorial.h 6377 2012-03-30 20:06:44Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -50,12 +50,12 @@ iSAM algorithm, first published in IJCAI in January 2007.
 
 @section tutorial_fg SLAM as a Factor Graph
 
-In the iSAM library, We represent the SLAM problem as a factor
+In the iSAM library, we represent the SLAM problem as a factor
 graph. A factor graph is a bipartite graph that contains two types of
 nodes: variable nodes and factor nodes. Edges are only allowed between
-different types of nodes, ie. they always connect a node with a
-factor. An example of a factor graph representing a SLAM problem is
-given below:
+different types of nodes, i.e. they always connect a node with a
+factor. Here is an example of a factor graph representing a simple
+SLAM problem:
 
 \image html factor_graph.png
 
@@ -122,13 +122,17 @@ prototyping, iSAM by default uses numerical differentiation. For
 time-critical implementations, the user can optionally provide a
 symbolic derivative by overwriting isam::Factor::jacobian.
 
-For the case that a new Node type is required, simply define a new
-class that provides the interface required by isam::Node::NodeT. The
-template NodeT is then used to create the actual new node. This design
-is different from a Factor and has been chosen to allow use of the
-data type itself independently of nodes (also, a Node internally
-creates two instances of the data type, one for the current estimate
-and one for the linearization point).
+New types of nodes can also be defined by the user. Good examples of
+nodes are Point2d (simple) and Pose3d (more advanced). The user simply
+creates a new class that contains the variables to be optimized as
+well as an exponential map. In many cases the exponential map simply
+adds a delta vector to the variable. However, when dealing with
+overparametrized representations such as Quaternions, rotation
+matrices and homogeneous points (see Rot3d and Point3dh), the
+exponential map allows using a minimal representation within the
+optimization. The minimal representation is only needed locally for
+updates, while a global minimal representation might not be available
+or suitable for this purpose.
 
 
 @section tutorial_covs Marginal Covariances

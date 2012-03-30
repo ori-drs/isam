@@ -2,10 +2,10 @@
  * @file Viewer.cpp
  * @brief 3D visualization.
  * @author Michael Kaess
- * @version $Id: Viewer.cpp 3216 2010-10-19 14:50:36Z kaess $
+ * @version $Id: Viewer.cpp 6335 2012-03-22 23:13:52Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -44,6 +44,7 @@
 
 using namespace std;
 using namespace isam;
+using namespace Eigen;
 
 // current window size, with fixed initial size
 GLsizei width = 800;
@@ -62,7 +63,7 @@ bool redraw = false;
 // background color (gray scale 0 to 1)
 float bg_color = 0.0f;
 
-Pose3d eye;
+Pose3d eye_;
 
 GLuint gl_list;
 
@@ -89,10 +90,10 @@ void drawGL() {
   glLoadIdentity();
 
   /* Camera rotation */
-  glTranslated(-eye.x(), -eye.y(), -eye.z());
-  glRotated(eye.roll(),  1.0f, 0.0f, 0.0f);
-  glRotated(eye.pitch(), 0.0f, 1.0f, 0.0f);
-  glRotated(eye.yaw(),   0.0f, 0.0f, 1.0f);
+  glTranslated(-eye_.x(), -eye_.y(), -eye_.z());
+  glRotated(rad_to_deg(eye_.roll()),  1.0f, 0.0f, 0.0f);
+  glRotated(rad_to_deg(eye_.pitch()), 0.0f, 1.0f, 0.0f);
+  glRotated(rad_to_deg(eye_.yaw()),   0.0f, 0.0f, 1.0f);
 
   GLfloat light_position0[] = {1.0, 1.0, 1.0, 0.0};
   glLightfv(GL_LIGHT0, GL_POSITION, light_position0);
@@ -163,7 +164,7 @@ void resize(GLsizei w, GLsizei h, int videoFlags) {
  * if further away from origin to allow for fast navigation.
  */
 double factor(bool use_sqrt) {
-  double distance = eye.trans().vector().norm();
+  double distance = eye_.trans().vector().norm();
   if (use_sqrt) {
     return 1. + sqrt(distance) / 2.;
   } else {
@@ -176,8 +177,14 @@ double factor(bool use_sqrt) {
  * Incrementally change rotation of camera/scene.
  */
 void rotate(int dx, int dy) {
-  eye.set_roll (eye.roll()  + dy);
-  eye.set_pitch(eye.pitch() + dx);
+  eye_.set_roll (eye_.roll()  + deg_to_rad(dy));
+  eye_.set_pitch(eye_.pitch() + deg_to_rad(dx));
+  redraw = true;
+}
+
+void rotate2(int dx, int dy) {
+  eye_.set_roll(eye_.roll() + deg_to_rad(dy));
+  eye_.set_yaw (eye_.yaw()  + deg_to_rad(dx));
   redraw = true;
 }
 
@@ -185,8 +192,8 @@ void rotate(int dx, int dy) {
  * Incrementally change translation of camera/scene.
  */
 void translate(int dx, int dy) {
-  eye.set_x(eye.x() - dx * 0.03*factor(false));
-  eye.set_y(eye.y() + dy * 0.03*factor(false));
+  eye_.set_x(eye_.x() - dx * 0.03*factor(false));
+  eye_.set_y(eye_.y() + dy * 0.03*factor(false));
   redraw = true;
 }
 
@@ -194,7 +201,7 @@ void translate(int dx, int dy) {
  * Incrementally change scale of scene.
  */
 void scale(int dx, int dy) {
-  eye.set_z(eye.z() + dy * 0.1*factor(true));
+  eye_.set_z(eye_.z() + dy * 0.1*factor(true));
   redraw = true;
 }
 
@@ -202,7 +209,7 @@ void scale(int dx, int dy) {
  * Reset viewpoint to default starting position.
  */
 void reset() {
-  eye = Pose3d(0.0f, 0.0f, 100.0f, 0.0f, 0.0f, 0.0f);
+  eye_ = Pose3d(0.0f, 0.0f, 100.0f, 0.0f, 0.0f, 0.0f);
   redraw = true;
 }
 
@@ -265,6 +272,8 @@ void mouseMotion(int x, int y) {
       scale(dx, dy);
     } else if (modState & KMOD_CTRL) {
       translate(dx, dy);
+    } else if (modState & KMOD_ALT) {
+      rotate2(dx, dy);
     } else {
       rotate(dx, dy);
     }
@@ -366,7 +375,7 @@ int main_loop(void* unused) {
 
   quit();
 
-  return NULL;
+  return 0;
 }
 
 void Viewer::init(int (*process)(void*)) {
@@ -378,7 +387,7 @@ void Viewer::init(int (*process)(void*)) {
   main_loop(NULL);
 }
 
-void Viewer::set_nodes(const vector<Pose3d>& nodes, int id, const string& name, int type) {
+void Viewer::set_nodes(const vector<Pose3d, Eigen::aligned_allocator<isam::Pose3d> >& nodes, int id, const string& name, int type) {
   SDL_LockMutex(mutex);
   ObjCollection* collection = new ObjCollection(id, name, type, nodes);
   collections_t::iterator it = collections.find(id);
@@ -408,7 +417,7 @@ void Viewer::set_links(const vector<pair<int,int> >& links, int id, const string
   SDL_UnlockMutex(mutex);
 }
 
-void Viewer::set_covariances(const list<Matrix>& covariances, int id, char* name, int col, bool is_3d) const {
+void Viewer::set_covariances(const list<MatrixXd>& covariances, int id, char* name, int col, bool is_3d) const {
   SDL_LockMutex(mutex);
   CovCollection* collection = new CovCollection(id, name, covariances, col, is_3d);
   collections_t::iterator it = collections.find(id);

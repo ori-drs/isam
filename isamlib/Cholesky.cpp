@@ -2,10 +2,10 @@
  * @file Cholesky.cpp
  * @brief Cholesky batch factorization using CHOLMOD by Tim Davis.
  * @author Michael Kaess
- * @version $Id: Cholesky.cpp 3204 2010-10-06 16:02:07Z kaess $
+ * @version $Id: Cholesky.cpp 5042 2011-07-23 01:46:18Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -36,12 +36,13 @@
 #include "cholmod.h"
 
 // use CSparse instead of CHOLMOD (default)
-//#define USE_CSPARSE
+const bool USE_CSPARSE = false;
 
 // use CSparse-QR instead of CSparse-Cholesky, much slower, only for testing
-//#define USE_CSPARSE_QR
+const bool USE_CSPARSE_QR = false;
 
 using namespace std;
+using namespace Eigen;
 
 namespace isam {
 
@@ -63,7 +64,7 @@ public:
     cholmod_finish(&Common);
   }
 
-  void factorize(const SparseSystem& Ab, Vector* delta = NULL) {
+  void factorize(const SparseSystem& Ab, VectorXd* delta = NULL, double lambda = 0) {
     tic("Cholesky");
 
     reset(); // make sure _L, _rhs, _order are empty
@@ -71,7 +72,6 @@ public:
     cholmod_sparse* At = to_cholmod_transp(Ab);
     int nrow = At->ncol;
     int ncol = At->nrow;
-//    cholmod_sparse* A = cholmod_transpose(At, 1, &Common);
 
     // Cholesky factorization
     // cholmod factors AA' instead of A'A - so we need to pass in At!
@@ -79,17 +79,37 @@ public:
 #if 0
     // restrict ordering (default is trying several)
     Common.nmethods = 1;
-    Common.method[0].ordering = CHOLMOD_COLAMD;
+    Common.method[0].ordering = CHOLMOD_AMD; //CHOLMOD_NATURAL; //CHOLMOD_COLAMD;
     Common.postorder = false;
 #endif
-    L_factor = cholmod_analyze(At, &Common);
-    tic("cholmod_factorize");
-    cholmod_factorize(At, L_factor, &Common);
-    toc("cholmod_factorize");
+    if (lambda>0) { // for Levenberg-Marquardt
+      cholmod_sparse* A = cholmod_transpose(At, 1, &Common);
+      // make symmetric matrix (only upper part saved)
+      cholmod_sparse* AtA = cholmod_ssmult(At, A, 1, 1, 1, &Common); 
+      // modify diagonal
+      int* AtAp = (int*)AtA->p;
+      //      int* AtAi = (int*)AtA->i;
+      double* AtAx = (double*)AtA->x;
+      for (int i=0; i<ncol; i++) {
+        int p = AtAp[i+1]-1;
+        AtAx[p] *= (1+lambda);
+      }
+      L_factor = cholmod_analyze(AtA, &Common);
+      tic("cholmod_factorize");
+      cholmod_factorize(AtA, L_factor, &Common);
+      toc("cholmod_factorize");
+      cholmod_free_sparse(&AtA, &Common);
+      cholmod_free_sparse(&A, &Common);
+    } else {
+      L_factor = cholmod_analyze(At, &Common);
+      tic("cholmod_factorize");
+      cholmod_factorize(At, L_factor, &Common);
+      toc("cholmod_factorize");
+    }
     // make sure factorization is in correct format (LL, simplicial, packed, ordered)
     cholmod_change_factor(CHOLMOD_REAL, true, false, true, true, L_factor, &Common);
 
-    // calculate new rhs (y in R'y = A'b)
+    // calculate new rhs by forward substitution (y in R'y = A'b)
     // note: original rhs is size nrow, Atb and new rhs are size ncol
     cholmod_dense* A_rhs = cholmod_zeros(nrow, 1, CHOLMOD_REAL, &Common);
     memcpy(A_rhs->x, Ab.rhs().data(), nrow*sizeof(double));
@@ -102,10 +122,11 @@ public:
     // forward sub to obtain new (modified) rhs
     _rhs = cholmod_solve(CHOLMOD_L, L_factor, Atb_perm, &Common);
 
-    // optionally solve the triangular system
+    // optionally solve the triangular system by backsubstitution
     if (delta) {
       cholmod_dense* delta_ = cholmod_solve(CHOLMOD_Lt, L_factor, _rhs, &Common);
-      *delta = Vector(_rhs->nrow, (double*)delta_->x);
+      *delta = VectorXd(_rhs->nrow);
+      memcpy(delta->data(), (double*)delta_->x, _rhs->nrow*sizeof(double));
       cholmod_free_dense(&delta_, &Common);
     }
 
@@ -119,7 +140,6 @@ public:
     cholmod_free_dense(&Atb, &Common);
     cholmod_free_dense(&A_rhs, &Common);
     cholmod_free_factor(&L_factor, &Common);
-//    cholmod_free_sparse(&A, &Common);
     cholmod_free_sparse(&At, &Common);
 
     toc("Cholesky");
@@ -128,7 +148,9 @@ public:
   void get_R(SparseSystem& R) {
     // we need R but have L, so the transpose works out fine
     of_cholmod_transp(_L, R, _order);
-    R.set_rhs(Vector(_L->nrow, (double*)_rhs->x));
+    VectorXd tmp(_L->nrow);
+    memcpy(tmp.data(), (double*)_rhs->x, _L->nrow*sizeof(double));
+    R.set_rhs(tmp);
   }
 
   int* get_order() {
@@ -203,8 +225,48 @@ public:
   virtual ~CholeskyImplCSparse() {
     reset();
   }
+ 
+  // QR factorization, slower than Cholesky below, does not deal with lambda!
+  int* qr(cs* csA, int n, css* S, csn* N) {
+    // symbolic QR with reordering
+    S = cs_sqr(3, csA, 1); // first argument: 0=no reoder, 3=reorder
+    // numerical QR based on symbolic factorization
+    N = cs_qr(csA, S);
+    // note: R factor in U for QR, variable ordering in S->q
+    // note that L (N->U) is not square! taking subset below
+    cs* csTemp = cs_spalloc(n, n, N->U->nzmax, 1, 0);
+    memcpy(csTemp->p, N->U->p, (n+1) * sizeof(int));
+    memcpy(csTemp->i, N->U->i, N->U->nzmax * sizeof(int));
+    memcpy(csTemp->x, N->U->x, N->U->nzmax * sizeof(double));
+    _L = cs_transpose(csTemp, 1);
+    cs_spfree(csTemp);
+    return S->q;
+  }
 
-  void factorize(const SparseSystem& Ab, Vector* delta = NULL) {
+  int* cholesky(cs* csA, cs* csAt, int n, double lambda, css* S, csn* N) {
+    // Cholesky factorization
+    cs* csAtA = cs_multiply(csAt, csA);
+    if (lambda>0.) {
+      // modify diagonal
+      for (int i=0; i<n; i++) {
+        int p = csAtA->p[i];
+        while (csAtA->i[p]!=i) {p++;} // find diagonal entry
+        csAtA->x[p] *= (1.+lambda);
+      }
+    }
+    S = cs_schol(1, csAtA);
+    N = cs_chol(csAtA, S);
+    // straight copy
+    _L = cs_spalloc(n, n, N->L->nzmax, 1, 0);
+    memcpy(_L->p, N->L->p, (n+1) * sizeof(int));
+    memcpy(_L->i, N->L->i, N->L->nzmax * sizeof(int));
+    memcpy(_L->x, N->L->x, N->L->nzmax * sizeof(double));
+    int* p = cs_pinv(S->pinv, csAtA->n);
+    cs_spfree(csAtA);
+    return p;
+  }
+
+  void factorize(const SparseSystem& Ab, VectorXd* delta = NULL, double lambda = 0) {
     tic("Cholesky");
 
     reset(); // make sure _L, _rhs, _order are empty
@@ -214,34 +276,15 @@ public:
     cs* csA = cs_transpose(csAt, 1);
     int m = csA->m;
     int n = csA->n;
-#ifdef USE_CSPARSE_QR
-    // QR factorization, slower than Cholesky below
-    // symbolic QR with reordering
-    css *S = cs_sqr(3, csA, 1); // first argument: 0=no reoder, 3=reorder
-    // numerical QR based on symbolic factorization
-    csn *N = cs_qr(csA, S);
-    // note: R factor in U for QR, variable ordering in S->q
-    // note that L (N->U) is not square! taking subset below
-    cs* csTemp = cs_spalloc(n, n, N->U->nzmax, 1, 0);
-    memcpy(csTemp->p, N->U->p, (n+1) * sizeof(int));
-    memcpy(csTemp->i, N->U->i, N->U->nzmax * sizeof(int));
-    memcpy(csTemp->x, N->U->x, N->U->nzmax * sizeof(double));
-    _L = cs_transpose(csTemp, 1);
-    cs_spfree(csTemp);
-    const int* p = S->q;
-#else
-    // Cholesky factorization
-    cs* csAtA = cs_multiply(csAt, csA);
-    css *S = cs_schol(1, csAtA);
-    csn *N = cs_chol(csAtA, S);
-    // straight copy
-    _L = cs_spalloc(n, n, N->L->nzmax, 1, 0);
-    memcpy(_L->p, N->L->p, (n+1) * sizeof(int));
-    memcpy(_L->i, N->L->i, N->L->nzmax * sizeof(int));
-    memcpy(_L->x, N->L->x, N->L->nzmax * sizeof(double));
-    cs_spfree(csAtA);
-    int* p = cs_pinv(S->pinv, csAtA->n);
-#endif
+    css* S = NULL;
+    csn* N = NULL;
+    int* p = NULL;
+    if (USE_CSPARSE_QR) {
+      cout << "WARNING: Using slow QR factorization without LM support" << endl;
+      p = qr(csA, n, S, N);
+    } else {
+      p = cholesky(csA, csAt, n, lambda, S, N);
+    }
     _order = new int[n];
     memcpy(_order, p, n*sizeof(int));
     // reorder rhs
@@ -267,14 +310,15 @@ public:
       double* delta_ = new double[n];
       memcpy(delta_, _rhs, n*sizeof(double));
       cs_ltsolve(_L, delta_);
-      *delta = Vector(n, delta_);
+      *delta = VectorXd(n);
+      memcpy(delta->data(), delta_, n*sizeof(double));
       delete[] delta_;
     }
 
     // clean up
-#ifndef USE_CSPARSE_QR
-    cs_free(p);
-#endif
+    if (USE_CSPARSE_QR) {
+      cs_free(p);
+    }
     cs_spfree(csA);
     cs_spfree(csAt);
     cs_sfree(S);
@@ -284,7 +328,9 @@ public:
 
   void get_R(SparseSystem& R) {
     of_csparse_transp(_L, R, _order);
-    R.set_rhs(Vector(_L->n, _rhs));
+    VectorXd tmp(_L->n);
+    memcpy(tmp.data(), _rhs, _L->n);
+    R.set_rhs(tmp);
   }
 
   int* get_order() {
@@ -343,11 +389,11 @@ private:
 
 
 Cholesky* Cholesky::Create() {
-#ifdef USE_CSPARSE
-  return new CholeskyImplCSparse();
-#else
-  return new CholeskyImpl();
-#endif
+  if (USE_CSPARSE) {
+    return new CholeskyImplCSparse();
+  } else {
+    return new CholeskyImpl();
+  }
 }
 
 }

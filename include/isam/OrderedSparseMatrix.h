@@ -2,10 +2,10 @@
  * @file OrderedSparseMatrix.h
  * @brief Adds column ordering to sparse matrix functionality for iSAM.
  * @author Michael Kaess
- * @version $Id: OrderedSparseMatrix.h 2922 2010-08-27 05:42:42Z kaess $
+ * @version $Id: OrderedSparseMatrix.h 6377 2012-03-30 20:06:44Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -93,7 +93,8 @@ public:
    * @param first_row Row offset.
    * @param first_col Column offset.
    */
-  OrderedSparseMatrix(const OrderedSparseMatrix& mat, int num_rows, int num_cols, int first_row = 0, int first_col = 0);
+  OrderedSparseMatrix(const OrderedSparseMatrix& mat, int num_rows,
+      int num_cols, int first_row = 0, int first_col = 0);
 
   OrderedSparseMatrix(int num_rows, int num_cols, SparseVector_p* rows);
 

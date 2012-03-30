@@ -2,10 +2,10 @@
  * @file SparseMatrix.cpp
  * @brief Sparse matrix functionality for iSAM.
  * @author Michael Kaess
- * @version $Id: SparseMatrix.cpp 3160 2010-09-26 20:10:11Z kaess $
+ * @version $Id: SparseMatrix.cpp 6376 2012-03-30 18:34:44Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -35,6 +35,7 @@
 #include "isam/SparseMatrix.h"
 
 using namespace std;
+using namespace Eigen;
 
 namespace isam {
 
@@ -72,7 +73,7 @@ void SparseMatrix::_dealloc_SparseMatrix() {
 }
 
 SparseMatrix::SparseMatrix(int num_rows, int num_cols) {
-  require(num_rows>=0 && num_cols>=0, "SparseMatrix constructor: Index out of range");
+  requireDebug(num_rows>=0 && num_cols>=0, "SparseMatrix constructor: Index out of range");
   // we reserve space for at least 2 times what we need now, but not to be less than MIN_COLS
   _allocate_SparseMatrix(num_rows, num_cols, max(MIN_NUM_ROWS, 2*num_rows), max(MIN_NUM_COLS, 2*num_cols));
 }
@@ -120,24 +121,24 @@ const SparseMatrix& SparseMatrix::operator= (const SparseMatrix& mat) {
 }
 
 double SparseMatrix::operator()(int row, int col) const {
-  require((row>=0) && (row<_num_rows) && (col>=0) && (col<_num_cols),
+  requireDebug((row>=0) && (row<_num_rows) && (col>=0) && (col<_num_cols),
           "SparseMatrix::operator(): Index out of range.");
   return (*_rows[row])(col);
 }
 
 void SparseMatrix::set(int row, int col, const double val, bool grow_matrix) {
-  require(row>=0 && col>=0, "SparseMatrix::set: Invalid index.");
+  requireDebug(row>=0 && col>=0, "SparseMatrix::set: Invalid index.");
   if (grow_matrix) {
     ensure_num_rows(row+1);
     ensure_num_cols(col+1);
   } else {
-    require(row<_num_rows && col<_num_cols, "SparseMatrix::set: Index out of range.");
+    requireDebug(row<_num_rows && col<_num_cols, "SparseMatrix::set: Index out of range.");
   }
   _rows[row]->set(col, val);
 }
 
 void SparseMatrix::append_in_row(int row, int col,const double val) {
-  require(row>=0 && col>=0 && row<_num_rows && col<_num_cols,
+  requireDebug(row>=0 && col>=0 && row<_num_rows && col<_num_cols,
       "SparseMatrix::append_in_row: Index out of range.");
   _rows[row]->append(col, val);
 }
@@ -148,6 +149,14 @@ int SparseMatrix::nnz() const {
     nnz+=_rows[row]->nnz();
   }
   return nnz;
+}
+
+int SparseMatrix::max_nz() const {
+  int max_nz = 0;
+  for (int row=0; row<_num_rows; row++) {
+    max_nz = max(max_nz, _rows[row]->nnz());
+  }
+  return max_nz;
 }
 
 void SparseMatrix::print(ostream& out) const {
@@ -186,13 +195,44 @@ void SparseMatrix::print_pattern() const {
   }
 }
 
+void SparseMatrix::save_pattern_eps(const string& file_name) const {
+  int x = num_cols();
+  int y = num_rows();
+  // find a scale factor that yields valid EPS coordinates
+  int m = max(x,y);
+  double scale = 1.;
+  for (; scale*m >= 10000.; scale*=0.1);
+  // create file
+  ofstream out(file_name.c_str());
+  out << "%!PS-Adobe-3.0 EPSF-3.0\n"
+      "%%BoundingBox: 0 0 " << x*scale << " " << y*scale << "\n"
+      "/BP{" << scale << " " << -scale << " scale 0 " << -y << " translate}bind def\n"
+      "BP\n"
+      "150 dict begin\n"
+      "/D/dup cvx def/S/stroke cvx def\n"
+      "/L/lineto cvx def/M/moveto cvx def\n"
+      "/RL/rlineto cvx def/RM/rmoveto cvx def\n"
+      "/GS/gsave cvx def/GR/grestore cvx def\n"
+      "/REC{M 0 1 index RL 1 index 0 RL neg 0 exch RL neg 0 RL}bind def\n"
+      "0 0 150 setrgbcolor\n"
+      "0.01 setlinewidth\n";
+  for (int row=0; row<_num_rows; row++) {
+    for (SparseVectorIter iter(*_rows[row]); iter.valid(); iter.next()) {
+      double val;
+      int col = iter.get(val);
+      out << "1 1 " << col << " " << row << " REC GS fill GR S" << endl;
+    }
+  }
+  out.close();
+}
+
 const SparseVector& SparseMatrix::get_row(int row) const {
-  require(row>=0 && row<_num_rows, "SparseMatrix::get_row: Index out of range.");
+  requireDebug(row>=0 && row<_num_rows, "SparseMatrix::get_row: Index out of range.");
   return *_rows[row];
 }
 
 void SparseMatrix::set_row(int row, const SparseVector& new_row) {
-  require(row>=0 && row<_num_rows, "SparseMatrix::set_row: Index out of range.");
+  requireDebug(row>=0 && row<_num_rows, "SparseMatrix::set_row: Index out of range.");
   *_rows[row] = new_row;
 }
 
@@ -209,7 +249,7 @@ void SparseMatrix::import_rows(int num_rows, int num_cols, SparseVector_p* rows)
 }
 
 void SparseMatrix::append_new_rows(int num) {
-  require(num>=1, "SparseMatrix::append_new_rows: Cannot add less than one row.");
+  requireDebug(num>=1, "SparseMatrix::append_new_rows: Cannot add less than one row.");
   int pos = _num_rows;
   if (_num_rows+num > _max_num_rows) {
     // automatic resizing, amortized cost O(1)
@@ -227,7 +267,7 @@ void SparseMatrix::append_new_rows(int num) {
 }
 
 void SparseMatrix::append_new_cols(int num) {
-  require(num>=1, "SparseMatrix::append_new_cols: Cannot add less than one column.");
+  requireDebug(num>=1, "SparseMatrix::append_new_cols: Cannot add less than one column.");
   if (_num_cols+num > _max_num_cols) {
     // this is actually used in OrderedSparseMatrix for the column translation table
     _max_num_cols = max(2*_max_num_cols, _num_cols+num);
@@ -236,21 +276,21 @@ void SparseMatrix::append_new_cols(int num) {
 }
 
 void SparseMatrix::ensure_num_rows(int num_rows) {
-  require(num_rows>0, "SparseMatrix::ensure_num_rows: num_rows must be positive.");
+  requireDebug(num_rows>0, "SparseMatrix::ensure_num_rows: num_rows must be positive.");
   if (_num_rows < num_rows) {
     append_new_rows(num_rows - _num_rows);
   }
 }
 
 void SparseMatrix::ensure_num_cols(int num_cols) {
-  require(num_cols>0, "SparseMatrix::ensure_num_cols: num_cols must be positive.");
+  requireDebug(num_cols>0, "SparseMatrix::ensure_num_cols: num_cols must be positive.");
   if (_num_cols < num_cols) {
     append_new_cols(num_cols - _num_cols);
   }
 }
 
 void SparseMatrix::remove_row() {
-  require(_num_rows>0, "SparseMatrix::remove_row called on empty matrix.");
+  requireDebug(_num_rows>0, "SparseMatrix::remove_row called on empty matrix.");
   // no need to worry about resizing _rows itself for this special case...
   delete _rows[_num_rows-1];
   _rows[_num_rows-1] = NULL;
@@ -258,8 +298,8 @@ void SparseMatrix::remove_row() {
 }
 
 void SparseMatrix::apply_givens(int row, int col, double* c_givens, double* s_givens) {
-  require(row>=0 && row<_num_rows && col>=0 && col<_num_cols, "SparseMatrix::apply_givens: index outside matrix.");
-  require(row>col, "SparseMatrix::apply_givens: can only zero entries below the diagonal.");
+  requireDebug(row>=0 && row<_num_rows && col>=0 && col<_num_cols, "SparseMatrix::apply_givens: index outside matrix.");
+  requireDebug(row>col, "SparseMatrix::apply_givens: can only zero entries below the diagonal.");
   const SparseVector& row_top = *_rows[col];
   const SparseVector& row_bot = *_rows[row];
   double a = row_top(col);
@@ -342,47 +382,49 @@ int SparseMatrix::triangulate_with_givens() {
   return count;
 }
 
-const Vector operator*(const SparseMatrix& lhs, const Vector& rhs) {
-  require(lhs.num_cols()==rhs.num_rows(), "SparseMatrix::operator* matrix and vector incompatible.");
-  Vector res(lhs.num_rows());
+const VectorXd operator*(const SparseMatrix& lhs, const VectorXd& rhs) {
+  requireDebug(lhs.num_cols()==rhs.rows(), "SparseMatrix::operator* matrix and vector incompatible.");
+  VectorXd res(lhs.num_rows());
+  res.setZero();
   for (int row=0; row<lhs.num_rows(); row++) {
     for (SparseVectorIter iter(lhs.get_row(row)); iter.valid(); iter.next()) {
       double val;
       int col = iter.get(val);
-      res.set(row, res(row) + val * rhs(col));
+      res(row) += val * rhs(col);
     }
   }
   return res;
 }
 
-Vector mul_SparseMatrixTrans_Vector(const SparseMatrix& lhs, const Vector& rhs) {
-  require(lhs.num_rows()==rhs.num_rows(), "SparseMatrix::mul_SparseMatrixTrans_Vector matrix and vector incompatible.");
-  Vector res(lhs.num_cols());
+VectorXd mul_SparseMatrixTrans_Vector(const SparseMatrix& lhs, const VectorXd& rhs) {
+  requireDebug(lhs.num_rows()==rhs.rows(), "SparseMatrix::mul_SparseMatrixTrans_Vector matrix and vector incompatible.");
+  VectorXd res(lhs.num_cols());
+  res.setZero();
   for (int row=0; row<lhs.num_rows(); row++) {
     for (SparseVectorIter iter(lhs.get_row(row)); iter.valid(); iter.next()) {
       double val;
       int col = iter.get(val);
-      res.set(col, res(col) + val * rhs(row));
+      res(col) += val * rhs(row);
     }
   }
   return res;
 }
 
-SparseMatrix sparseMatrix_of_matrix(const Matrix& m) {
-  SparseMatrix s(m.num_rows(), m.num_cols());
-  for (int r=0; r<m.num_rows(); r++) {
-    for (int c=0; c<m.num_cols(); c++) {
+SparseMatrix sparseMatrix_of_matrix(const MatrixXd& m) {
+  SparseMatrix s(m.rows(), m.cols());
+  for (int r=0; r<m.rows(); r++) {
+    for (int c=0; c<m.cols(); c++) {
       s.set(r, c, m(r,c));
     }
   }
   return s;
 }
 
-Matrix matrix_of_sparseMatrix(const SparseMatrix& s) {
-  Matrix m(s.num_rows(), s.num_cols());
+MatrixXd matrix_of_sparseMatrix(const SparseMatrix& s) {
+  MatrixXd m(s.num_rows(), s.num_cols());
   for (int r=0; r<s.num_rows(); r++) {
     for (int c=0; c<s.num_cols(); c++) {
-      m.set(r, c, s(r,c));
+      m(r, c) = s(r,c);
     }
   }
   return m;

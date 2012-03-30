@@ -2,10 +2,9 @@ cmake_minimum_required(VERSION 2.6)
 
 # find all source and header files
 file(GLOB SRCS RELATIVE "${PROJECT_SOURCE_DIR}/isamlib" "*.cpp")
-file(GLOB INCS RELATIVE "${PROJECT_SOURCE_DIR}/include/isam" "*.h")
 
 # isamlib
-add_library(isamlib ${SRCS} ${INCS})
+add_library(isamlib ${SRCS})
 set_property(TARGET isamlib PROPERTY OUTPUT_NAME isam)
 
 # find CHOLMOD as part of suitesparse (on Mac in ufsparse/ instead of suitesparse/)
@@ -48,13 +47,15 @@ else()
   target_link_libraries(isamlib ${CXSPARSE_LIBRARY} ${CHOLMOD_LIBRARY})
 endif()
 
-add_definitions(-I${CHOLMOD_INCLUDE})
+include_directories(${CHOLMOD_INCLUDE})
 
 # install library
 install(TARGETS isamlib
+  PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
 )
 # install header files
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/isam/ DESTINATION include/isam
           FILES_MATCHING PATTERN "*.h" PATTERN ".svn" EXCLUDE)
+

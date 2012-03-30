@@ -2,10 +2,10 @@
  * @file Factor.h
  * @brief Graph factor for iSAM.
  * @author Michael Kaess
- * @version $Id: Factor.h 3160 2010-09-26 20:10:11Z kaess $
+ * @version $Id: Factor.h 5960 2012-01-23 00:27:20Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -30,52 +30,19 @@
 #include <string>
 
 #include <math.h> // for sqrt
+#include <Eigen/Dense>
 
 #include "util.h"
+#include "Jacobian.h"
 #include "Element.h"
-#include "Vector.h"
 #include "Node.h"
+#include "Noise.h"
 #include "numericalDiff.h"
 
 namespace isam {
 
 typedef double (*cost_func_t)(double);
 
-// Elementary Jacobian for one specific variable/node, potentially containing multiple measurement rows.
-class Term {
-  Node* _node;
-  Matrix _term;
-public:
-  Node* node() {return _node;}
-  Matrix& term() {return _term;}
-  Term(Node* node, const Matrix& term) : _node(node), _term(term) {}
-  Term(Node* node, const double * term, int r, int c) : _node(node), _term(r,c,term) {}
-};
-
-typedef std::list<Term> Terms;
-
-// Jacobian consisting of multiple blocks.
-class Jacobian {
-  int _dimtotal;
-public:
-  Terms terms;
-  //const 
-  Vector residual;
-  Jacobian() : _dimtotal(0), residual()  {}
-  Jacobian(Vector& residual) : _dimtotal(0), residual(residual) {}
-  inline Jacobian(const double * residual, int r) : _dimtotal(0), residual(r,residual) {}
-  void add_term(Node* node, const Matrix& term) {
-    terms.push_back(Term(node, term));
-  _dimtotal += node->dim();
-  }
-
-  inline void add_term(Node* node, const double* term, int r, int c) {
-    terms.push_back(Term(node, term, r, c));
-  _dimtotal += node->dim();
-  }
-  
-  int dimtotal() const { return _dimtotal; }
-};
 
 // Factor of the graph of measurements between Nodes.
 class Factor : public Element, Function {
@@ -87,56 +54,62 @@ class Factor : public Element, Function {
   cost_func_t *ptr_cost_func;
 
   static int _next_id;
+
 protected:
-  const Matrix _sqrtinf;
+
+  const Noise _noise;
+
   std::vector<Node*> _nodes; // list of nodes affected by measurement
+
 public:
-  virtual Vector error(const Vector& x) const {
-    // partition vector according to nodes
-    std::vector<Vector> xs(_nodes.size());
-    int pos = 0;
-    for (unsigned int i=0; i<_nodes.size(); i++) {
-      int size = _nodes[i]->dim();
-      xs[i] = Vector(pos, size, x);
-      pos += size;
-    }
-    // actual evaluation of error
-    Vector err = _sqrtinf * basic_error(xs);
+
+  virtual Eigen::VectorXd error(Selector s = ESTIMATE) const {
+    Eigen::VectorXd err = _noise.sqrtinf() * basic_error(s);
     // optional modified cost function
     if (*ptr_cost_func) {
       for (int i=0; i<err.size(); i++) {
         double val = err(i);
-        err.set(i, ((val>=0)?1.:(-1.)) * sqrt((*ptr_cost_func)(val)));
+        err(i) = ((val>=0)?1.:(-1.)) * sqrt((*ptr_cost_func)(val));
       }
     }
     return err;
   }
-  std::vector<Node*> nodes() {return _nodes;}
-  Factor(const char* name, int dim, const Matrix& sqrtinf) : Element(name, dim), ptr_cost_func(NULL), _sqrtinf(sqrtinf) {
+
+  std::vector<Node*>& nodes() {return _nodes;}
+
+  Factor(const char* name, int dim, const Noise& noise) : Element(name, dim), ptr_cost_func(NULL), _noise(noise) {
 #ifndef NDEBUG
     // all lower triagular entries below the diagonal must be 0
-    for (int r=0; r<_sqrtinf.num_rows(); r++) {
+    for (int r=0; r<_noise.sqrtinf().rows(); r++) {
       for (int c=0; c<r; c++) {
-        require(_sqrtinf(r,c)==0, "Factor::Factor: sqrtinf must be upper triangular!");
+        requireDebug(_noise.sqrtinf()(r,c)==0, "Factor::Factor: sqrtinf must be upper triangular!");
       }
     }
 #endif
     _id = _next_id++;
   }
+
   virtual ~Factor() {}
+
   virtual void initialize() = 0;
+
   virtual void initialize_internal() {
     for (unsigned int i=0; i<_nodes.size(); i++) {
       _nodes[i]->add_factor(this);
     }
     initialize();
   }
-  virtual void init_ptr(cost_func_t* ptr) {ptr_cost_func = ptr;}
-  virtual Vector basic_error(const std::vector<Vector>& x) const = 0;
-  virtual const Matrix& sqrtinf() const {return _sqrtinf;}
-  Vector evaluate(const Vector& x) const {
-    return error(x);
+
+  virtual void set_cost_function(cost_func_t* ptr) {ptr_cost_func = ptr;}
+
+  virtual Eigen::VectorXd basic_error(Selector s = ESTIMATE) const = 0;
+
+  virtual const Eigen::MatrixXd& sqrtinf() const {return _noise.sqrtinf();}
+
+  Eigen::VectorXd evaluate() const {
+    return error(LINPOINT);
   }
+
   virtual Jacobian jacobian_internal(bool force_numerical) {
     if (force_numerical) {
       // ignore any symbolic derivative provided by user
@@ -145,25 +118,27 @@ public:
       return jacobian();
     }
   }
+
   // can be replaced by symbolic derivative by user
   virtual Jacobian jacobian() {
-    Vector x0 = _nodes[0]->vector0(); // Vector x0 yields a vector with one entry!
-    for (unsigned int i=1; i<_nodes.size(); i++) { // note: skips first entry
-      x0 = x0 ^ _nodes[i]->vector0();
-    }
-    Matrix H = numerical_jacobian(x0);
-    Vector r = error(x0);
+    Eigen::MatrixXd H = numerical_jacobian();
+    Eigen::VectorXd r = error(LINPOINT);
     Jacobian jac(r);
     int position = 0;
     int n_measure = dim();
     for (unsigned int i=0; i<_nodes.size(); i++) {
       int n_var = _nodes[i]->dim();
-      Matrix Hi = Matrix(0, position, n_measure, n_var, H);
+      Eigen::MatrixXd Hi = H.block(0, position, n_measure, n_var);
       position += n_var;
       jac.add_term(_nodes[i], Hi);
     }
     return jac;
   }
+
+  int num_measurements() const {
+    return dim();
+  }
+
   virtual void write(std::ostream &out) const {
     Element::write(out);
     for (unsigned int i=0; i<_nodes.size(); i++) {
@@ -174,10 +149,59 @@ public:
   }
 
 private:
-  virtual Matrix numerical_jacobian(const Vector& x) {
-    return numericalDiff(*this, x);
+
+  virtual Eigen::MatrixXd numerical_jacobian() {
+    return numericalDiff(*this);
   }
 
 };
+
+/**
+ * Convert upper triangular square root information matrix to string.
+ * @param sqrtinf Upper triangular square matrix.
+ */
+inline std::string noise_to_string(const Noise& noise) {
+  int nrows = noise.sqrtinf().rows();
+  int ncols = noise.sqrtinf().cols();
+  require(nrows==ncols, "slam2d::sqrtinf_to_string: matrix must be square");
+  std::stringstream s;
+  s << "{";
+  bool first = true;
+  for (int r=0; r<nrows; r++) {
+    for (int c=r; c<ncols; c++) {
+      if (first) {
+        first = false;
+      } else {
+        s << ",";
+      }
+      s << noise.sqrtinf()(r,c);
+    }
+  }
+  s << "}";
+  return s.str();
+}
+
+// Generic template for easy instantiation of new factors
+template <class T>
+class FactorT : public Factor {
+
+protected:
+
+  const T _measure;
+  
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  FactorT(const char* name, int dim, const Noise& noise, const T& measure) : Factor(name, dim, noise), _measure(measure) {}
+
+  const T& measurement() const {return _measure;}
+
+  void write(std::ostream &out) const {
+    Factor::write(out);
+    out << " " << _measure << " " << noise_to_string(_noise);
+  }
+
+};
+
 
 }

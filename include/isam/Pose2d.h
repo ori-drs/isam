@@ -2,10 +2,10 @@
  * @file Pose2d.h
  * @brief Simple 2D pose class.
  * @author Michael Kaess
- * @version $Id: Pose2d.h 3349 2010-11-06 12:45:27Z kaess $
+ * @version $Id: Pose2d.h 4133 2011-03-22 20:40:38Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -28,9 +28,9 @@
 
 #include <cmath>
 #include <ostream>
+#include <Eigen/Dense>
 
 #include "util.h"
-#include "Vector.h"
 #include "Point2d.h"
 
 namespace isam {
@@ -48,12 +48,13 @@ class Pose2d {
 public:
   // assignment operator and copy constructor implicitly created, which is ok
   static const int dim = 3;
+  static const int size = 3;
   static const char* name() {
     return "Pose2d";
   }
   Pose2d() : _x(0.), _y(0.), _t(0.) {}
   Pose2d(double x, double y, double t) : _x(x), _y(y), _t(t) {}
-  Pose2d(const Vector& vec) : _x(vec(0)), _y(vec(1)), _t(vec(2)) {}
+  Pose2d(const Eigen::Vector3d& vec) : _x(vec(0)), _y(vec(1)), _t(vec(2)) {}
 
   double x() const {return _x;}
   double y() const {return _y;}
@@ -63,10 +64,16 @@ public:
   void set_y(double y) {_y = y;}
   void set_t(double t) {_t = t;}
 
-  Vector vector() const {
-    // disabled - faster but not portable, even using a "packed" struct
-    //    return Vector(3, &_x);
-    Vector v = make_Vector(3, _x, _y, _t);
+  Pose2d exmap(const Eigen::Vector3d& delta) const {
+    Pose2d res = *this;
+    res._x += delta(0);
+    res._y += delta(1);
+    res._t = standardRad(res._t + delta(2));
+    return res;
+  }
+
+  Eigen::Vector3d vector() const {
+    Eigen::Vector3d v(_x, _y, _t);
     return v;
   }
   void set(double x, double y, double t) {
@@ -74,7 +81,7 @@ public:
     _y = y;
     _t = t;
   }
-  void set(const Vector& v) {
+  void set(const Eigen::Vector3d& v) {
     _x = v(0);
     _y = v(1);
     _t = standardRad(v(2));

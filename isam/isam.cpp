@@ -2,10 +2,10 @@
  * @file isam.cpp
  * @brief Main isam program.
  * @author Michael Kaess
- * @version $Id: isam.cpp 3364 2010-11-11 16:17:30Z kaess $
+ * @version $Id: isam.cpp 6377 2012-03-30 20:06:44Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -26,8 +26,7 @@
 
 #include <iostream>
 
-const std::string usage =
-    "\n"
+const std::string usage = "\n"
     "Usage:\n"
     "  iSAM [OPTION...] FILE\n"
     "\n"
@@ -43,18 +42,29 @@ const std::string usage =
     "  -F           force use of numerical derivatives\n"
     "  -C           calculate marginal covariances\n"
     "  -B           batch processing\n"
+    "  -M           use Levenberg-Marquardt for batch\n"
+    "  -P           use Powell's Dog-Leg algorithm for optimization\n"
     "  -N           no optimization\n"
+    "  -R           use robust (pseudo-Huber) cost function\n"
     "  -d <number>  #steps between drawing/sending data\n"
     "  -u <number>  #steps between any updates (batch or incremental)\n"
     "  -b <number>  #steps between batch steps, 0=never\n"
     "  -s <number>  #steps between solution (backsubstitution)\n"
     "\n";
 
+const std::string intro = "\n"
+    "Incremental Smoothing and Mapping (iSAM) version 1.6\n"
+    "(C) 2009-2012 Massachusetts Institute of Technology\n"
+    "Michael Kaess, Hordur Johannsson, David M. Rosen, and John J. Leonard\n"
+    "\n";
+
 #include <stdio.h>
 #include <cstring>
 #include <map>
+#include <Eigen/Dense>
 
 #include <isam/isam.h>
+#include <isam/robust.h>
 
 #include "Loader.h"
 #ifdef USE_LCM
@@ -73,6 +83,7 @@ extern char *optarg;
 
 using namespace std;
 using namespace isam;
+using namespace Eigen;
 
 const int FNAME_MAX = 500;
 char fname[FNAME_MAX];
@@ -108,17 +119,23 @@ public:
   double time;
   double chi2;
   unsigned int nnz;
+  double local_chi2;
   unsigned int nnodes;
   unsigned int nconstraints;
 };
 vector<class Stats> stats;
+
+// hard coded for now, affecting all constraints
+double robust_cost_function(double d) {
+  return cost_pseudo_huber(d, .5);
+}
 
 /**
  * Command line argument processing.
  */
 void process_arguments(int argc, char* argv[]) {
   int c;
-  while ((c = getopt(argc, argv, ":h?vqn:GLS:W:CBFNd:u:b:s:") ) != -1) {
+  while ((c = getopt(argc, argv, ":h?vqn:GLS:W:FCBMPNRd:u:b:s:")) != -1) {
     // Each option character has to be in the string in getopt();
     // the first colon changes the error character from '?' to ':';
     // a colon after an option means that there is an extra
@@ -126,10 +143,12 @@ void process_arguments(int argc, char* argv[]) {
     switch (c) {
     case 'h':
     case '?':
+      cout << intro;
       cout << usage;
       exit(0);
       break;
     case 'v':
+      prop.quiet = false;
       prop.verbose = true;
       break;
     case 'q':
@@ -142,27 +161,30 @@ void process_arguments(int argc, char* argv[]) {
       break;
     case 'G':
 #ifndef USE_GUI
-      require(false, "GUI support (-G) was disabled at compile time")
+      require(false, "GUI support (-G) was disabled at compile time");
 #endif
       use_gui = true;
       break;
     case 'L':
 #ifndef USE_LCM
-      require(false, "LCM support (-L) was disabled at compile time")
+      require(false, "LCM support (-L) was disabled at compile time");
 #endif
       use_lcm = true;
       break;
     case 'S':
       save_stats = true;
-      if (optarg!=NULL) {
+      if (optarg != NULL) {
         strncpy(fname_stats, optarg, FNAME_MAX);
       }
       break;
     case 'W':
       write_result = true;
-      if (optarg!=NULL) {
+      if (optarg != NULL) {
         strncpy(fname_result, optarg, FNAME_MAX);
       }
+      break;
+    case 'F':
+      prop.force_numerical_jacobian = true;
       break;
     case 'C':
       calculate_covariances = true;
@@ -170,47 +192,61 @@ void process_arguments(int argc, char* argv[]) {
     case 'B':
       batch_processing = true;
       break;
-    case 'F':
-      prop.force_numerical_jacobian = true;
+    case 'M':
+      prop.method = LEVENBERG_MARQUARDT;
+      break;
+    case 'P':
+      prop.method = DOG_LEG;
       break;
     case 'N':
       no_optimization = true;
       break;
+    case 'R':
+      slam.set_cost_function(&robust_cost_function);
+      break;
     case 'd':
       mod_draw = atoi(optarg);
-      require(mod_draw>0, "Number of steps between drawing (-d) must be positive (>0).");
+      require(mod_draw>0,
+          "Number of steps between drawing (-d) must be positive (>0).");
       break;
     case 'u':
       prop.mod_update = atoi(optarg);
-      require(prop.mod_update>0, "Number of steps between updates (-u) must be positive (>0).");
+      require(prop.mod_update>0,
+          "Number of steps between updates (-u) must be positive (>0).");
       break;
     case 'b':
       prop.mod_batch = atoi(optarg);
-      require(prop.mod_batch>=0, "Number of steps between batch steps (-b) must be positive or zero (>=0).");
+      require(
+          prop.mod_batch>=0,
+          "Number of steps between batch steps (-b) must be positive or zero (>=0).");
       break;
     case 's':
       prop.mod_solve = atoi(optarg);
-      require(prop.mod_solve>0, "Number of steps between solving (-s) must be positive (>0).");
+      require(prop.mod_solve>0,
+          "Number of steps between solving (-s) must be positive (>0).");
       break;
     case ':': // unknown option, from getopt
+      cout << intro;
       cout << usage;
       exit(1);
       break;
     }
   }
 
-  if (argc > optind+1) {
+  if ((prop.method == LEVENBERG_MARQUARDT) && (!batch_processing)) {
+    cout << "Error:  Levenberg-Marquardt optimization has no incremental mode."
+        << endl;
+    exit(1);
+  }
+
+  if (argc > optind + 1) {
+    cout << intro;
     cout << endl;
     cout << "Error: Too many arguments." << endl;
     cout << usage;
     exit(1);
-  } else if (argc == optind+1) {
+  } else if (argc == optind + 1) {
     strncpy(fname, argv[optind], FNAME_MAX);
-  } else {
-    cout << endl;
-    cout << "Error: Too few arguments." << endl;
-    cout << usage;
-    exit(1);
   }
 
 }
@@ -221,8 +257,10 @@ void process_arguments(int argc, char* argv[]) {
 void save_statistics(const string& fname) {
   ofstream out(fname.c_str(), ios::out | ios::binary);
   require(out, "Cannot open statistics file.");
-  for (unsigned int i=0; i<stats.size(); i++) {
-    out << i << " " << stats[i].time << " " << stats[i].chi2 << " " << stats[i].nnz;
+  for (unsigned int i = 0; i < stats.size(); i++) {
+    out << i << " " << stats[i].time << " " << stats[i].chi2 << " "
+        << stats[i].nnz;
+    out << " " << stats[i].local_chi2;
     out << " " << stats[i].nconstraints << " " << stats[i].nnodes;
     out << endl;
   }
@@ -232,33 +270,34 @@ void save_statistics(const string& fname) {
 /**
  * Calculate covariances for both points and poses up to the given time step.
  */
-void covariances(unsigned int step, list<Matrix>& point_marginals,
-                 list<Matrix>& pose_marginals) {
+void covariances(unsigned int step, list<MatrixXd>& point_marginals,
+    list<MatrixXd>& pose_marginals) {
   // make sure return arguments are empty
   point_marginals.clear();
   pose_marginals.clear();
 
   // combining everything into one call is faster,
   // as it avoids recalculating commonly needed entries
-  Slam::node_lists_t node_lists;
-  for (unsigned int i=0; i<step; i++) {
+  Covariances::node_lists_t node_lists;
+  for (unsigned int i = 0; i < step; i++) {
     list<Node*> entry;
     entry.push_back(loader->pose_nodes()[i]);
     node_lists.push_back(entry);
   }
-  for (unsigned int i=0; i<loader->num_points(step); i++) {
+  for (unsigned int i = 0; i < loader->num_points(step); i++) {
     list<Node*> entry;
     entry.push_back(loader->point_nodes()[i]);
     node_lists.push_back(entry);
   }
-  pose_marginals = slam.marginal_covariance(node_lists);
+  pose_marginals = slam.covariances().marginal(node_lists);
 
   // split into points and poses
   if (pose_marginals.size() > 0) {
-    list<Matrix>::iterator center = pose_marginals.begin();
-    for (unsigned int i=0; i<step; i++, center++);
-    point_marginals.splice(point_marginals.begin(), pose_marginals,
-                           center, pose_marginals.end());
+    list<MatrixXd>::iterator center = pose_marginals.begin();
+    for (unsigned int i = 0; i < step; i++, center++)
+      ;
+    point_marginals.splice(point_marginals.begin(), pose_marginals, center,
+        pose_marginals.end());
   }
 }
 
@@ -267,9 +306,9 @@ void covariances(unsigned int step, list<Matrix>& point_marginals,
  * or send data via LCM (to an external viewer).
  */
 void visualize(unsigned int step) {
-  list<Matrix> point_marginals;
-  list<Matrix> pose_marginals;
-  if (calculate_covariances && (use_gui || use_lcm) && (step%mod_draw==0)) {
+  list<MatrixXd> point_marginals;
+  list<MatrixXd> pose_marginals;
+  if (calculate_covariances && (use_gui || use_lcm) && (step % mod_draw == 0)) {
     covariances(step, point_marginals, pose_marginals);
   }
 
@@ -290,16 +329,16 @@ void visualize(unsigned int step) {
     }
     if (use_lcm && step%mod_draw==0) {
       lcm.send_nodes(loader->poses(step), id_trajectory, (char*)"Trajectory", 1);
-      lcm.send_nodes(loader->points(step), id_landmarks, (char*)"Landmarks", 2);
+      lcm.send_nodes(loader->points(step), id_landmarks, (char*)"Landmarks", loader->is_3d() ? 3 : 2);
       lcm.send_links(loader->constraints(step), id_constraints,
           (char*)"Odometry", id_trajectory, id_trajectory);
       lcm.send_links(loader->measurements(step), id_measurements,
           (char*)"Measurements", id_trajectory, id_landmarks);
       if (calculate_covariances) {
-        lcm.send_covariances(pose_marginals,  id_pose_covs,
-            (char*)"Pose Covs",  id_trajectory, loader->is_3d());
+        lcm.send_covariances(pose_marginals, id_pose_covs,
+            (char*)"Pose Covs", id_trajectory, loader->is_3d());
         lcm.send_covariances(point_marginals, id_point_covs,
-            (char*)"Point Covs", id_landmarks,  loader->is_3d());
+            (char*)"Point Covs", id_landmarks, loader->is_3d());
       }
     }
   }
@@ -318,16 +357,16 @@ void visualize(unsigned int step) {
       viewer.set_nodes(loader->poses(step), id_trajectory,
           (char*)"Trajectory", VIEWER_OBJ_POSE3D);
       viewer.set_nodes(loader->points(step), id_landmarks,
-          (char*)"Landmarks", VIEWER_OBJ_TREE);
+          (char*)"Landmarks", loader->is_3d() ? VIEWER_OBJ_POINT3D : VIEWER_OBJ_TREE);
       viewer.set_links(loader->constraints(step), id_constraints,
           "Odometry", id_trajectory, id_trajectory);
       viewer.set_links(loader->measurements(step), id_measurements,
           "Measurements", id_trajectory, id_landmarks);
       if (calculate_covariances) {
-        viewer.set_covariances(pose_marginals,  id_pose_covs,
-            (char*)"Pose Covs",  id_trajectory, loader->is_3d());
+        viewer.set_covariances(pose_marginals, id_pose_covs,
+            (char*)"Pose Covs", id_trajectory, loader->is_3d());
         viewer.set_covariances(point_marginals, id_point_covs,
-            (char*)"Point Covs", id_landmarks,  loader->is_3d());
+            (char*)"Point Covs", id_landmarks, loader->is_3d());
       }
     }
   }
@@ -352,51 +391,58 @@ void check_quit() {
 void incremental_slam() {
   unsigned int step = 0;
 
-    for (; step<loader->num_steps(); step++) {
 
-      check_quit();
+  unsigned int next_step = step;
+  // step by step after reading log file
+  for (; loader->more_data(&next_step); step = next_step) {
+    check_quit();
 
-      double t0 = tic();
+    double t0 = tic();
 
-      tic("setup");
+    tic("setup");
 
-      // add new variables and constraints
-      for(list<Node*>::const_iterator it = loader->nodes(step).begin();
-          it!=loader->nodes(step).end(); it++) {
-        if (prop.verbose) cout << **it << endl;
+    // add new variables and constraints for current step
+    for (unsigned int s = step; s < next_step; s++) {
+      for (list<Node*>::const_iterator it = loader->nodes(s).begin();
+          it != loader->nodes(s).end(); it++) {
+        if (prop.verbose)
+          cout << **it << endl;
         slam.add_node(*it);
       }
-      for(list<Factor*>::const_iterator it = loader->factors(step).begin();
-          it!=loader->factors(step).end(); it++) {
-        if (prop.verbose) cout << **it << endl;
+      for (list<Factor*>::const_iterator it = loader->factors(s).begin();
+          it != loader->factors(s).end(); it++) {
+        if (prop.verbose)
+          cout << **it << endl;
         slam.add_factor(*it);
-      }
-
-      toc("setup");
-      tic("incremental");
-
-      if (!(batch_processing || no_optimization)) {
-        slam.update();
-      }
-
-      toc("incremental");
-
-      if (save_stats) {
-        stats.resize(step+1);
-        stats[step].time = toc(t0);
-        stats[step].chi2 = slam.normalized_chi2();
-        stats[step].nnz = slam.get_R().nnz();
-        stats[step].nnodes = slam.get_nodes().size();
-        stats[step].nconstraints = slam.get_factors().size();
-      }
-
-      // visualization is not counted in timing
-      if (!(batch_processing || no_optimization)) {
-        visualize(step);
       }
     }
 
-  visualize(step-1);
+    toc("setup");
+    tic("incremental");
+
+    if (!(batch_processing || no_optimization)) {
+      slam.update();
+    }
+
+    toc("incremental");
+
+    if (save_stats) {
+      stats.resize(step + 1);
+      stats[step].time = toc(t0);
+      stats[step].chi2 = slam.normalized_chi2();
+      stats[step].nnz = slam.get_R().nnz();
+      stats[step].local_chi2 = slam.local_chi2(100); // last 100 constraints
+      stats[step].nnodes = slam.get_nodes().size();
+      stats[step].nconstraints = slam.get_factors().size();
+    }
+
+    // visualization is not counted in timing
+    if (!(batch_processing || no_optimization)) {
+      visualize(step);
+    }
+  }
+
+  visualize(step - 1);
 
   if (!no_optimization) {
     if (batch_processing) {
@@ -413,7 +459,7 @@ void incremental_slam() {
     }
   }
 
-  visualize(step-1);
+  visualize(step - 1);
 }
 
 /**
@@ -431,7 +477,8 @@ int process(void* unused) {
     if (!batch_processing) {
       cout << endl;
     }
-    double accumulated = tictoc("setup") + tictoc("incremental") + tictoc("batch");
+    double accumulated = tictoc("setup") + tictoc("incremental")
+        + tictoc("batch");
     cout << "Accumulated computation time: " << accumulated << "s" << endl;
     cout << "(Overall execution time: " << tictoc("all") << "s)" << endl;
     slam.print_stats();
@@ -448,7 +495,6 @@ int process(void* unused) {
     slam.save(fname_result);
     cout << endl;
   }
-
 
 #ifdef USE_GUI
   if (use_gui) {
@@ -471,17 +517,13 @@ int main(int argc, char* argv[]) {
 
   tic("all");
 
-  cout << endl;
-  cout << "Incremental Smoothing and Mapping (iSAM) version 1.5" << endl;
-  cout << "(C) 2009-2010 Massachusetts Institute of Technology" << endl;
-  cout << "Michael Kaess, Hordur Johannsson, and John J. Leonard" << endl;
-  cout << endl;
-
   process_arguments(argc, argv);
+
+  cout << intro;
 
   if (!prop.quiet) {
     cout << "Reading " << fname;
-    if (parse_num_lines>0) {
+    if (parse_num_lines > 0) {
       cout << " (only " << parse_num_lines << " lines)";
     }
     cout << endl;

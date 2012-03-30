@@ -2,10 +2,10 @@
  * @file util.cpp
  * @brief Basic utility functions that are independent of iSAM.
  * @author Michael Kaess
- * @version $Id: util.cpp 2736 2010-08-04 20:24:05Z kaess $
+ * @version $Id: util.cpp 6335 2012-03-22 23:13:52Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -104,6 +104,10 @@ void tictoc_print() {
 
 double tictoc(string id) {
   return (timing.time(id));
+}
+
+Eigen::MatrixXd eye(int num) {
+  return Eigen::MatrixXd::Identity(num, num);
 }
 
 void givens(const double a, const double b, double& c, double& s) {

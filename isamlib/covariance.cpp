@@ -2,10 +2,10 @@
  * @file covariance.cpp
  * @brief Recovery of marginal covariance matrix, for details see Kaess09ras.
  * @author Michael Kaess
- * @version $Id: covariance.cpp 2921 2010-08-27 04:23:38Z kaess $
+ * @version $Id: covariance.cpp 4975 2011-07-13 17:49:09Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -25,10 +25,13 @@
  */
 
 #include <vector>
+#include <utility> // pair
+
 #include "isam/covariance.h"
 #include "isam/util.h"
 
 using namespace std;
+using namespace Eigen;
 
 #if 1
 #include <tr1/unordered_map>
@@ -138,9 +141,9 @@ double recover(const SparseMatrix& R, int n, int i, int l) {
   return res;
 }
 
-list<Matrix> cov_marginal(const SparseMatrix& R, const index_lists_t& index_lists, bool debug, int step) {
+list<MatrixXd> cov_marginal(const SparseMatrix& R, const index_lists_t& index_lists, bool debug, int step) {
   prepare(R);
-  list<Matrix> Cs;
+  list<MatrixXd> Cs;
 
   // debugging
   int requested = 0;
@@ -150,17 +153,17 @@ list<Matrix> cov_marginal(const SparseMatrix& R, const index_lists_t& index_list
 
     const vector<int>& indices = index_lists[i];
     unsigned int n_indices = indices.size();
-    Matrix C(n_indices, n_indices);
+    MatrixXd C(n_indices, n_indices);
     // recover entries of marginal cov
     int n = R.num_cols();
     for (int r=n_indices-1; r>=0; r--) {
       for (int c=n_indices-1; c>=r; c--) {
-        C.set(r, c, recover(R, n, indices[r], indices[c]));
+        C(r,c) = recover(R, n, indices[r], indices[c]);
       }
     }
     for (unsigned int r=1; r<n_indices; r++) {
       for (unsigned int c=0; c<r; c++) {
-        C.set(r, c, C(c,r));
+        C(r,c) = C(c,r);
       }
     }
     Cs.push_back(C);
@@ -186,6 +189,20 @@ list<Matrix> cov_marginal(const SparseMatrix& R, const index_lists_t& index_list
   }
 
   return Cs;
+}
+
+list<double> cov_marginal(const SparseMatrix& R, const entry_list_t& entry_list) {
+  prepare(R);
+  list<double> entries;
+
+  int n = R.num_cols();
+  for (unsigned int i=0; i<entry_list.size(); i++) {
+    const pair<int, int>& index = entry_list[i];
+    double entry = recover(R, n, index.first, index.second);
+    entries.push_back(entry);
+  }
+
+  return entries;
 }
 
 }

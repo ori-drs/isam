@@ -2,10 +2,10 @@
  * @file lcm.cpp
  * @brief LCM interface
  * @author Michael Kaess
- * @version $Id: Lcm.cpp 2825 2010-08-19 21:35:34Z kaess $
+ * @version $Id: Lcm.cpp 4232 2011-04-02 20:18:18Z hordurj $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -44,6 +44,7 @@
 
 using namespace std;
 using namespace isam;
+using namespace Eigen;
 
 
 Lcm::Lcm() {
@@ -63,7 +64,10 @@ void Lcm::send_reset() const {
   }
 }
 
-void Lcm::send_nodes(const vector<Pose3d>& poses, int id, char* name, int type) const {
+void Lcm::send_nodes(const vector<Pose3d, Eigen::aligned_allocator<isam::Pose3d> >& poses,
+                     int id,
+                     char* name,
+                     int type) const {
   unsigned int num = poses.size();
   if (lcm) {
     mrlcm_obj_collection_t objs;
@@ -111,7 +115,7 @@ void Lcm::send_links(const vector<pair<int,int> >& links, int id, char* name, in
   }
 }
 
-void Lcm::send_covariances(const list<Matrix>& covariances, int id, char* name, int collection, bool is_3d) const {
+void Lcm::send_covariances(const list<MatrixXd>& covariances, int id, char* name, int collection, bool is_3d) const {
   unsigned int num = covariances.size();
   mrlcm_cov_collection_t covs;
   covs.id = id;
@@ -120,7 +124,7 @@ void Lcm::send_covariances(const list<Matrix>& covariances, int id, char* name, 
   covs.reset = true;
   covs.ncovs = num;
   mrlcm_cov_t cs[num];
-  list<Matrix>::const_iterator it = covariances.begin();
+  list<MatrixXd>::const_iterator it = covariances.begin();
   for (unsigned int i=0; i<num; i++, it++) {
     cs[i].id = i;
     cs[i].collection = collection;
@@ -128,7 +132,7 @@ void Lcm::send_covariances(const list<Matrix>& covariances, int id, char* name, 
     cs[i].n = is_3d?6:3;
     cs[i].entries = new double[cs[i].n];
     double* entries = cs[i].entries;
-    const Matrix& cov = *it;
+    const MatrixXd& cov = *it;
     entries[0] = cov(0,0);
     entries[1] = cov(0,1);
     if (is_3d) {

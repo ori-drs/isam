@@ -2,10 +2,10 @@
  * @file SparseMatrix.h
  * @brief Sparse matrix functionality for iSAM
  * @author Michael Kaess
- * @version $Id: SparseMatrix.h 3160 2010-09-26 20:10:11Z kaess $
+ * @version $Id: SparseMatrix.h 6376 2012-03-30 18:34:44Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -26,11 +26,10 @@
 
 #pragma once
 
-#include "SparseVector.h"
-#include "Vector.h"
-#include "Matrix.h"
-
 #include <iostream>
+#include <Eigen/Dense>
+
+#include "SparseVector.h"
 
 namespace isam {
 
@@ -134,6 +133,12 @@ public:
   virtual int nnz() const;
 
   /**
+   * Determine maximum number of non-zero entries in any column.
+   * @return Maximum number of non-zero entries in any column.
+   */
+  virtual int max_nz() const;
+
+  /**
    * Print sparse matrix as triples to stream;
    * also readable by Matlab: "load R.txt; S=spconvert(R); spy(S)"
    * @param out Output stream.
@@ -155,6 +160,11 @@ public:
    * Prints non-zero pattern to stdout.
    */
   virtual void print_pattern() const;
+
+  /**
+   * Save eps graphics file with sparse matrix patterns.
+   */
+  virtual void save_pattern_eps(const std::string& file_name) const;
 
   /**
    * Return a sparse row.
@@ -229,9 +239,9 @@ public:
   friend class OrderedSparseMatrix;
 };
 
-const Vector operator*(const SparseMatrix& lhs, const Vector& rhs);
-Vector mul_SparseMatrixTrans_Vector(const SparseMatrix& lhs, const Vector& rhs);
-SparseMatrix sparseMatrix_of_matrix(const Matrix& m);
-Matrix matrix_of_sparseMatrix(const SparseMatrix& s);
+const Eigen::VectorXd operator*(const SparseMatrix& lhs, const Eigen::VectorXd& rhs);
+Eigen::VectorXd mul_SparseMatrixTrans_Vector(const SparseMatrix& lhs, const Eigen::VectorXd& rhs);
+SparseMatrix sparseMatrix_of_matrix(const Eigen::MatrixXd& m);
+Eigen::MatrixXd matrix_of_sparseMatrix(const SparseMatrix& s);
 
 }

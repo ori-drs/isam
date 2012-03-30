@@ -2,10 +2,10 @@
  * @file Loader.h
  * @brief Loading files with constraints/factors.
  * @author Michael Kaess
- * @version $Id: Loader.h 2922 2010-08-27 05:42:42Z kaess $
+ * @version $Id: Loader.h 5691 2011-11-10 21:25:23Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -40,6 +40,7 @@
 #include <isam/Factor.h>
 #include <isam/slam2d.h>
 #include <isam/slam3d.h>
+#include <isam/slam_stereo.h>
 
 typedef std::list<isam::Node*> nodes_t;
 typedef std::list<isam::Factor*> factors_t;
@@ -93,6 +94,7 @@ class Loader {
   bool _verbose;
   unsigned int _step;
   bool _is_3d;
+  FILE* _in;
 
   // for each time step, we have some new nodes and some new factors
   std::vector<nodes_t> _nodes;
@@ -116,13 +118,20 @@ class Loader {
   // number of measurements up to each time step
   std::vector<int> _num_measurements;
 
+  std::map<int, isam::StereoCamera*> _cameras;
+
   void add_prior();
   bool advance(unsigned int idx_x1, unsigned int next_point_id);
-  void add_odometry(unsigned int idx_x0, unsigned int idx_x1, const isam::Pose2d& meausurement, const isam::Matrix& sqrtinf);
-  void add_odometry3(unsigned int idx_x0, unsigned int idx_x1, const isam::Pose3d& meausurement, const isam::Matrix& sqrtinf);
-  void add_measurement(unsigned int idx_x, unsigned int idx_l, const isam::Point2d& measurement, const isam::Matrix& sqrtinf);
+  void add_odometry(unsigned int idx_x0, unsigned int idx_x1, const isam::Pose2d& meausurement, const isam::Noise& noise);
+  void add_odometry3(unsigned int idx_x0, unsigned int idx_x1, const isam::Pose3d& meausurement, const isam::Noise& noise);
+  void add_point3(unsigned int idx_x, unsigned int idx_p, const isam::Point3d& m, const isam::Noise& noise);
+  void add_measurement(unsigned int idx_x, unsigned int idx_l, const isam::Point2d& measurement, const isam::Noise& noise);
+  void add_stereo(isam::StereoCamera* camera, unsigned int idx_x, unsigned int idx_p, const isam::StereoMeasurement& m, const isam::Noise& noise);
+
+  bool parse_line(char* str);
 
 public:
+  typedef std::vector<isam::Pose3d, Eigen::aligned_allocator<isam::Pose3d> > PoseList;
 
   /**
    * Loads factors and organizes in suitable data structure together with nodes.
@@ -132,10 +141,17 @@ public:
    */
   Loader(const char* fname, int num_lines, bool verbose);
 
+  ~Loader();
+
   /**
    * Print statistics about loaded data.
    */
   void print_stats() const;
+
+  /**
+   * Returns true if step was not the last step.
+   */
+  bool more_data(unsigned int* step);
 
   /**
    * Number of time steps in data loaded.
@@ -167,14 +183,14 @@ public:
    * @param step Time step.
    * @return Vector of 3D poses up to step.
    */
-  const std::vector<isam::Pose3d> poses(unsigned int step) const;
+  const PoseList poses(unsigned int step) const;
 
   /**
    * Returns vector of current 3D points up to time step (converted from 2D as needed).
    * @param step Time step.
    * @return Vector of 3D points up to step.
    */
-  const std::vector<isam::Pose3d> points(unsigned int step) const;
+  const PoseList points(unsigned int step) const;
 
   /**
    * Returns all pose nodes.

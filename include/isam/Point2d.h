@@ -2,10 +2,10 @@
  * @file Point2d.h
  * @brief Simple 2D point class.
  * @author Michael Kaess
- * @version $Id: Point2d.h 2826 2010-08-20 03:17:43Z kaess $
+ * @version $Id: Point2d.h 4133 2011-03-22 20:40:38Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "Vector.h"
+#include <Eigen/Dense>
 
 namespace isam {
 
@@ -41,12 +41,13 @@ class Point2d {
 
 public:
   static const int dim = 2;
+  static const int size = 2;
   static const char* name() {
     return "Point2d";
   }
   Point2d() : _x(0), _y(0) {}
   Point2d(double x, double y) : _x(x), _y(y) {}
-  Point2d(const Vector& vec) : _x(vec(0)), _y(vec(1)) {}
+  Point2d(const Eigen::Vector2d& vec) : _x(vec(0)), _y(vec(1)) {}
 
   double x() const {return _x;}
   double y() const {return _y;}
@@ -54,15 +55,22 @@ public:
   void set_x(double x) {_x = x;}
   void set_y(double y) {_y = y;}
 
-  Vector vector() const {
-    Vector v = make_Vector(2, _x, _y);
+  Point2d exmap(const Eigen::Vector2d& delta) const {
+    Point2d res = *this;
+    res._x += delta(0);
+    res._y += delta(1);
+    return res;
+  }
+
+  Eigen::Vector2d vector() const {
+    Eigen::Vector2d v(_x, _y);
     return v;
   }
   void set(double x, double y) {
     _x = x;
     _y = y;
   }
-  void set(const Vector& v) {
+  void set(const Eigen::Vector2d& v) {
     _x = v(0);
     _y = v(1);
   }

@@ -2,10 +2,10 @@
  * @file SparseVector.cpp
  * @brief part of sparse matrix functionality for iSAM
  * @author Michael Kaess
- * @version $Id: SparseVector.h 3216 2010-10-19 14:50:36Z kaess $
+ * @version $Id: SparseVector.h 3970 2011-02-16 00:16:54Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -25,6 +25,8 @@
  */
 
 #pragma once
+
+#include <Eigen/Dense>
 
 #include "isam/util.h"
 
@@ -125,7 +127,7 @@ public:
    * @param val Value of new entry.
    */
   inline void append(int idx, const double val = 0.) {
-    require(_nnz==0 || _indices[_nnz-1] < idx, "SparseVector::append: index has to be after last entry");
+    requireDebug(_nnz==0 || _indices[_nnz-1] < idx, "SparseVector::append: index has to be after last entry");
 
     if (_nnz+1 > _nnz_max) {
       // automatic resizing, amortized cost O(1)
@@ -141,7 +143,7 @@ public:
   /**
    * Assign a value to a specific entry.
    * @param idx Index of entry to assign to.
-   * @param val Value to assing.
+   * @param val Value to assign.
    * @return True if new entry had to be created (needed to update row index)
    */
   bool set(int idx, const double val = 0.);
@@ -150,11 +152,11 @@ public:
   /**
    * Assign a value to a specific entry.
    * @param idx Index of entry to assign to.
-   * @param vals Array of values to assign.
+   * @param vals Vector of values to assign.
    * @param c Number of values in double array val.
    * @return True if new entries had to be created
    */
-  bool set(int idx, const double* vals, int c);
+  bool set(int idx, const Eigen::VectorXd& vals);
 
   /**
    * Remove an entry; simply ignores non-existing entries.
@@ -216,7 +218,7 @@ public:
    * @return Current element index.
    */
   inline int get() const {
-    require(index < s._nnz, "SparseVectorIter::get(): Index out of range.");
+    requireDebug(index < s._nnz, "SparseVectorIter::get(): Index out of range.");
     int tmp = s._indices[index];
     return tmp;
   }
@@ -227,7 +229,7 @@ public:
    * @return Current element index.
    */
   inline int get(double& val) const {
-    require(index < s._nnz, "SparseVectorIter::get(): Index out of range.");
+    requireDebug(index < s._nnz, "SparseVectorIter::get(): Index out of range.");
     val = s._values[index];
     return s._indices[index];
   }
@@ -237,7 +239,7 @@ public:
    * @return Current element value returned.
    */
   inline double get_val() const {
-    require(index < s._nnz, "SparseVectorIter::get_val(): Index out of range.");
+    requireDebug(index < s._nnz, "SparseVectorIter::get_val(): Index out of range.");
     return s._values[index];
   }
 

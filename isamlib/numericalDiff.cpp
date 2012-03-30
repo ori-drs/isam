@@ -2,10 +2,10 @@
  * @file numericalDiff.cpp
  * @brief Numerical differentiation.
  * @author Michael Kaess
- * @version $Id: numericalDiff.cpp 2921 2010-08-27 04:23:38Z kaess $
+ * @version $Id: numericalDiff.cpp 4038 2011-02-26 04:31:00Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -24,8 +24,7 @@
  *
  */
 
-#include "isam/Vector.h"
-#include "isam/Matrix.h"
+#include <iostream>
 
 #include "isam/numericalDiff.h"
 
@@ -33,34 +32,56 @@
 
 const double epsilon = 0.0001;
 
+using namespace std;
+using namespace Eigen;
+
 namespace isam {
 
-Matrix numericalDiff(const Function& func, Vector x0) {
-  Vector y0 = func.evaluate(x0);
-  int m = y0.num_rows();
-  int n = x0.num_rows();
-  Matrix Jacobian(m,n); // result has one column per variable
-  for (int j=0; j<n; j++) {
-    Vector x_plus = x0;
-    x_plus.set(j, x_plus(j) + epsilon);
-    Vector y_plus = func.evaluate(x_plus);
-    Vector x_minus = x0;
-#ifdef SYMMETRIC
-    x_minus.set(j, x_minus(j) - epsilon);
-    Vector y_minus = func.evaluate(x_minus);
-    // seems unnecessary, but significantly improves accuracy as it
-    // takes into account that floating point cannot represent any
-    // number, see NR p186
-    double real_2epsilon = x_plus(j) - x_minus(j);
-    Vector diff = y_plus - y_minus;
-    Vector dxj = diff / real_2epsilon;
-#else
-    Vector dxj = (y_plus - y0) / (x_plus(j) - x0(j));
+MatrixXd numericalDiff(Function& func) {
+#ifndef SYMMETRIC
+  VectorXd y0 = func.evaluate();
 #endif
-    for (int i=0; i<m; i++) {
-      Jacobian.set(i, j, dxj(i));
+  // number of measurement rows
+  int m = func.num_measurements();
+  // number of variables
+  int n = 0;
+  vector<Node*>& nodes = func.nodes();
+  for (vector<Node*>::iterator it = nodes.begin(); it!=nodes.end(); it++) {
+    n += (*it)->dim();
+  }
+  // result has one column per variable
+  MatrixXd Jacobian(m,n);
+  int col = 0;
+  // for each node...
+  for (vector<Node*>::iterator it = nodes.begin(); it!=nodes.end(); it++) {
+    Node* node = *it;
+    int dim_n = node->dim();
+    // for each dimension of the node...
+    for (int j=0; j<dim_n; j++, col++) {
+      VectorXd delta(dim_n);
+      delta.setZero();
+      // remember original value
+      VectorXd original = node->vector0();
+      // evaluate positive delta
+      delta(j) = epsilon;
+      node->self_exmap(delta);
+      VectorXd y_plus = func.evaluate();
+      node->update0(original);
+#ifdef SYMMETRIC
+      // evaluate negative delta
+      delta(j) = -epsilon;
+      node->self_exmap(delta);
+      VectorXd y_minus = func.evaluate();
+      node->update0(original);
+      // store column
+      VectorXd diff = (y_plus - y_minus) / (epsilon + epsilon);
+#else
+      VectorXd diff = (y_plus - y0) / epsilon;
+#endif
+      Jacobian.col(col) = diff;
     }
   }
+
   return Jacobian;
 }
 

@@ -2,10 +2,10 @@
  * @file addRemove.cpp
  * @brief Editing of pose graphs.
  * @author Michael Kaess
- * @version $Id: addRemove.cpp 2839 2010-08-20 14:11:11Z kaess $
+ * @version $Id: addRemove.cpp 6335 2012-03-22 23:13:52Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -26,10 +26,10 @@
 
 #include <isam/Slam.h>
 #include <isam/slam2d.h>
-#include <isam/Matrix.h>
 
 using namespace std;
 using namespace isam;
+using namespace Eigen;
 
 // note that as the nodes have no IDs to print, it's not easy to know
 // which node is which; the user really has to keep track of that, or
@@ -51,30 +51,30 @@ int main() {
   // simpler - see example.cpp for dynamic allocation.
   Slam slam;
 
-  Matrix Sigma = 0.01 * Matrix::eye(3);
+  Noise noise = Covariance(0.01 * eye(3));
 
   Pose2d prior(0., 0., 0.);
   Pose2d_Node x0;
   Pose2d_Node x1;
   Pose2d_Node x2;
   slam.add_node(&x0);
-  Pose2d_Factor p_x0(&x0, prior, Sigma);
+  Pose2d_Factor p_x0(&x0, prior, noise);
   slam.add_factor(&p_x0);
   Pose2d odo(1., 0., 0.);
   slam.add_node(&x1);
-  Pose2d_Pose2d_Factor o_01(&x0, &x1, odo, Sigma);
+  Pose2d_Pose2d_Factor o_01(&x0, &x1, odo, noise);
   slam.add_factor(&o_01);
   slam.add_node(&x2);
-  Pose2d_Pose2d_Factor o_12(&x1, &x2, odo, Sigma);
+  Pose2d_Pose2d_Factor o_12(&x1, &x2, odo, noise);
   slam.add_factor(&o_12);
 
   slam.batch_optimization();
 
   Pose2d_Node a1;
   slam.add_node(&a1); // new node for x1
-  Pose2d_Pose2d_Factor o_01_new(&x0, &a1, odo, Sigma);
+  Pose2d_Pose2d_Factor o_01_new(&x0, &a1, odo, noise);
   slam.add_factor(&o_01_new);
-  Pose2d_Pose2d_Factor o_12_new(&a1, &x2, odo, Sigma);
+  Pose2d_Pose2d_Factor o_12_new(&a1, &x2, odo, noise);
   slam.add_factor(&o_12_new);
   slam.remove_node(&x1);
 

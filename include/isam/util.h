@@ -2,10 +2,10 @@
  * @file util.h
  * @brief Basic utility functions that are independent of iSAM.
  * @author Michael Kaess
- * @version $Id: util.h 2953 2010-09-07 21:43:43Z hordurj $
+ * @version $Id: util.h 6377 2012-03-30 20:06:44Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <cmath>
 #include <string>
+#include <Eigen/Dense>
 
 namespace isam {
 
@@ -41,7 +42,7 @@ const double TWOPI = 2.0*PI;
 const double HALFPI = PI/2.0;
 
 // values up to this constant are considered zero and removed from the matrix
-const double NUMERICAL_ZERO = 1e-8;
+const double NUMERICAL_ZERO = 1e-12;
 
 /**
  * Return current system time in seconds.
@@ -79,6 +80,10 @@ void tictoc_print();
  */
 double tictoc(std::string id);
 
+/**
+ * Return identity matrix.
+ */
+Eigen::MatrixXd eye(int num);
 
 /**
  * Calculate Givens rotation so that a specific entry becomes 0.
@@ -101,12 +106,24 @@ inline double standardRad(double t) {
   return t;
 }
 
+inline double deg_to_rad(double d) {
+  return (d/180.*PI);
+}
+
+inline double rad_to_deg(double r) {
+  return (r/PI*180.);
+}
+
 #ifdef NDEBUG
-// remove all requirements (only slightly faster, not really worth it)
-#define require(req,msg)
+// Release mode
+// remove requirements in inner loops for speed, but keep standard require functional
+#define requireDebug(req,msg)
+#define require(req,msg) if (!(req)) {fputs(msg, stderr);fputs("\n\n", stderr); exit(1);}
 #else
+// Debug mode
 // cause a crash to allow backtracing
-#define require(req,msg) if (!(req)) {fputs(msg, stderr);fputs("\n\n", stderr); *((int*)NULL) = NULL; exit(1);}
+#define requireDebug(req,msg) if (!(req)) {fputs(msg, stderr);fputs("\n\n", stderr); abort();}
+#define require(req,msg) requireDebug(req,msg)
 #endif
 
 }

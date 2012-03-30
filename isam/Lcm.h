@@ -2,10 +2,10 @@
  * @file lcm.h
  * @brief LCM interface.
  * @author Michael Kaess
- * @version $Id: Lcm.h 2736 2010-08-04 20:24:05Z kaess $
+ * @version $Id: Lcm.h 4232 2011-04-02 20:18:18Z hordurj $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -53,8 +53,10 @@ public:
    * @param name Collection name.
    * @param type Type of object (pose, tree etc.)
    */
-  void send_nodes(const std::vector<isam::Pose3d>& nodes,
-      int id, char* name, int type) const;
+  void send_nodes(const std::vector<isam::Pose3d, Eigen::aligned_allocator<isam::Pose3d> >& nodes,
+      int id,
+      char* name,
+      int type) const;
 
   /**
    * Sends a set of links (measurements, odometry constraints...).
@@ -75,7 +77,7 @@ public:
    * @param collection Collection number that the covariances refer to.
    * @param is_3d True if 3D covariances.
    */
-  void send_covariances(const std::list<isam::Matrix>& covariances,
+  void send_covariances(const std::list<Eigen::MatrixXd>& covariances,
       int id, char* name, int collection, bool is_3d) const;
 
 };

@@ -2,10 +2,10 @@
  * @file References.h
  * @brief iSAM references in doxygen format.
  * @author Michael Kaess
- * @version $Id: Tutorial.h 2898 2010-08-24 01:06:18Z kaess $
+ * @version $Id: References.h 6353 2012-03-26 22:16:29Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -42,7 +42,7 @@ A list of iSAM-related publications in BibTeX format.
   journal =      {Journal of Robotics and Autonomous Systems (RAS)},
   volume =       57,
   issue =        12,
-  month =        {Dec},
+  month =        dec,
   pages =        {1198-1210},
   year =         2009,
 }
@@ -56,7 +56,7 @@ A list of iSAM-related publications in BibTeX format.
   volume =       {24},
   number =       {6},
   pages =        {1365-1378},
-  month =        {Dec},
+  month =        dec,
   year =         2008,
 }
 
@@ -70,7 +70,7 @@ A list of iSAM-related publications in BibTeX format.
   volume =       25,
   number =       12,
   pages =        {1181-1204},
-  month =        {Dec},
+  month =        dec,
   year =         2006,
 }
 
@@ -80,18 +80,80 @@ A list of iSAM-related publications in BibTeX format.
 
 @verbatim
 
+% iSAM2 and Bayes tree journal paper
+@Article{Kaess12ijrr,
+  author =       {M. Kaess and H. Johannsson and R. Roberts and V. Ila
+                  and J.J. Leonard and F. Dellaert},
+  fullauthor =   {Michael Kaess and Hordur Johannsson and Richard
+                  Roberts and Viorela Ila and John J. Leonard and Frank
+                  Dellaert},
+  title =        {{iSAM2}: Incremental Smoothing and Mapping Using the
+                  {B}ayes Tree},
+  journal =      {Intl. J. of Robotics Research (IJRR)},
+  volume =       31,
+  issue =        2,
+  pages =        {217-236},
+  month =        feb,
+  year =         2012,
+}
+
+% Incremental Dog-Leg
+@InProceedings{Rosen12icra,
+  author =       {D.M. Rosen and M. Kaess and J.J. Leonard},
+  fullauthor =   {David M. Rosen and Michael Kaess and John
+                  J. Leonard},
+  title =        {An Incremental Trust-Region Method for Robust Online
+                  Sparse Least-Squares Estimation},
+  booktitle =    {IEEE Intl. Conf. on Robotics and Automation (ICRA)},
+  address =      {St. Paul, MN},
+  month =        may,
+  year =         2012,
+}
+
+% visual SLAM
+@InProceedings{McDonald11ecmr,
+  author =       {J. McDonald and M. Kaess and C. Cadena and J. Neira
+                  and J.J. Leonard},
+  fullauthor =   {John McDonald and Michael Kaess and Cesar Cadena and
+                  Jos\'{e} Neira and John J. Leonard},
+  title =        {6-{DOF} Multi-session Visual {SLAM} using Anchor
+                  Nodes},
+  booktitle =    {European Conference on Mobile Robots (ECMR)},
+  address =      {Orebro, Sweden},
+  pages =        {69-76},
+  month =        sep,
+  year =         2011,
+}
+
+% iSAM2
+@InProceedings{Kaess11icra,
+  author =       {M. Kaess and H. Johannsson and R. Roberts and V. Ila
+                  and J.J. Leonard and F. Dellaert},
+  fullauthor =   {Michael Kaess and Hordur Johannsson and Richard
+                  Roberts and Viorela Ila and John J. Leonard and
+                  Frank Dellaert},
+  title =        {{iSAM2}: Incremental Smoothing and Mapping with
+                  Fluid Relinearization and Incremental Variable
+                  Reordering},
+  booktitle =    {IEEE Intl. Conf. on Robotics and Automation (ICRA)},
+  address =      {Shanghai, China},
+  pages =        {3281-3288},
+  month =        may,
+  year =         2011,
+}
+
 % Bayes Tree
-@TechReport{Kaess10tr,
+@InProceedings{Kaess10wafr,
   author =       {M. Kaess and V. Ila and R. Roberts and F. Dellaert},
   fullauthor =   {Michael Kaess and Viorela Ila and Richard Roberts
                   and Frank Dellaert},
-  title =        {The {B}ayes Tree: Enabling Incremental Reordering
-                  and Fluid Relinearization for Online Mapping},
-  institution =  {Computer Science and Artificial Intelligence
-                  Laboratory, MIT},
-  month =        {Jan},
+  title =        {The {B}ayes Tree: An Algorithmic Foundation for
+                  Probabilistic Robot Mapping},
+  booktitle =    {Intl. Workshop on the Algorithmic Foundations of
+                  Robotics (WAFR)},
+  address =      {Singapore},
+  month =        dec,
   year =         2010,
-  number =       {MIT-CSAIL-TR-2010-021},
 }
 
 % anchor nodes
@@ -106,7 +168,7 @@ A list of iSAM-related publications in BibTeX format.
   booktitle =    {IEEE Intl. Conf. on Robotics and Automation (ICRA)},
   address =      {Anchorage, Alaska},
   pages =        {3185-3192},
-  month =        {May},
+  month =        may,
   year =         2010,
 }
 
@@ -120,7 +182,7 @@ A list of iSAM-related publications in BibTeX format.
   booktitle =    {IEEE Intl. Conf. on Robotics and Automation (ICRA)},
   address =      {Rome, Italy},
   pages =        {1670-1677},
-  month =        {Apr},
+  month =        apr,
   year =         2007,
 }
 
@@ -133,7 +195,7 @@ A list of iSAM-related publications in BibTeX format.
   booktitle =    {Intl. Joint Conf. on Artificial Intelligence (IJCAI)},
   address =      {Hyderabad, India},
   pages =        {2129-2134},
-  month =        {Jan},
+  month =        jan,
   year =         2007,
 }
 

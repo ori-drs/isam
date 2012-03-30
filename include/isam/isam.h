@@ -2,10 +2,10 @@
  * @file isam.h
  * @brief Main isam header file.
  * @author Michael Kaess
- * @version $Id: isam.h 2928 2010-08-29 15:05:45Z kaess $
+ * @version $Id: isam.h 6377 2012-03-30 20:06:44Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -29,15 +29,15 @@
 // all include files needed by a user of iSAM
 
 #include <isam/Slam.h>
+#include <isam/Anchor.h>
 #include <isam/slam2d.h>
 #include <isam/slam3d.h>
 #include <isam/Point2d.h>
 #include <isam/Pose2d.h>
 #include <isam/Point3d.h>
 #include <isam/Pose3d.h>
-#include <isam/Matrix.h>
-#include <isam/Vector.h>
 #include <isam/util.h>
+#include <isam/Noise.h>
 #include <isam/Properties.h>
 
 
@@ -63,9 +63,10 @@ Dellaert</a> (dellaert@cc.gatech.edu) at Georgia Tech.
 
 @section intro_copyright Copyright and License
 
-Copyright (C) 2009-2010 Massachusetts Institute of Technology.<br> <a
+Copyright (C) 2009-2012 Massachusetts Institute of Technology.<br> <a
 href="http://people.csail.mit.edu/kaess" target="_top">Michael
-Kaess</a> (kaess@mit.edu) and <a href="http://cml.mit.edu/~jleonard/"
+Kaess</a> (kaess@mit.edu), Hordur Johannsson (hordurj@mit.edu), David
+Rosen (dmrosen@mit.edu) and <a href="http://cml.mit.edu/~jleonard/"
 target="_top">John Leonard</a> (jleonard@mit.edu)
 
 iSAM is free software; you can redistribute it and/or modify it under
@@ -96,11 +97,12 @@ svn co https://svn.csail.mit.edu/isam
 
 @section intro_requirements Requirements
 
-This software was tested under Ubuntu 9.04-10.04, and Mac OS X
+This software was tested under Ubuntu 9.04-11.04, and Mac OS X
 10.5-10.6. iSAM depends on the following software:
 
 @li CMake (version 2.8 or higher)
 @li CHOLMOD (sparse matrix libraries by <a href="http://www.cise.ufl.edu/~davis/" target="_top">Tim Davis</a>, University of Florida)
+@li Eigen (version 3)
 @li SDL (optional, needed for 3D viewer)
 @li doxygen (optional, to generate documentation)
 @li graphviz (optional, to generate documentation)
@@ -108,7 +110,7 @@ This software was tested under Ubuntu 9.04-10.04, and Mac OS X
 To install all required packages in Ubuntu 9.10 and later, simply type:
 
 @verbatim
-sudo apt-get install cmake libsuitesparse-dev libsdl1.2-dev doxygen graphviz
+sudo apt-get install cmake libsuitesparse-dev libeigen3-dev libsdl1.2-dev doxygen graphviz
 @endverbatim
 
 Note that CHOLMOD is contained in SuiteSparse. On Mac OS X, SuiteSparse
@@ -128,9 +130,11 @@ make
 
 Directory structure:
 @li @c isamlib/ contains the source code for the iSAM library
-@li @c include/isam/ contains the header files for the iSAM library
+@li @c include/ contains the header files for the iSAM library
 @li @c isam/ contains the source code for the iSAM executable
 @li @c examples/ contains examples for using different components of the iSAM library
+@li @c doc/ contains the documentation (after calling "make doc")
+@li @c misc/ contains code referenced from publications
 @li @c data/ contains example data files
 @li @c lib/ contains the actual library "libisam.a"
 @li @c bin/ contains the main executable "isam"
@@ -184,6 +188,12 @@ Autonomous Systems, RAS, vol. 57, Dec. 2009, pp. 1198-1210, <a
 href="http://www.cc.gatech.edu/~kaess/pub/Kaess09ras.pdf"
 target="_top">PDF</a>
 
+@li "An Incremental Trust-Region Method for Robust Online Sparse
+Least-Squares Estimation" by D.M. Rosen, M. Kaess and J.J. Leonard,
+International Conference on Robotics and Automation (ICRA), May 2012,
+<a href="http://www.cc.gatech.edu/~kaess/pub/Rosen12icra.pdf"
+target="_top">PDF</a>
+
 A full list of iSAM-related references in BibTeX format is available
 here: \ref Bibliography.
 
@@ -194,9 +204,9 @@ target="_top">http://people.csail.mit.edu/kaess/</a>
 
 @section intro_ack Acknowledgments
 
-Many thanks to Hordur Johannsson and Richard Roberts for their help
-with this software. Thanks also to John McDonald, Ayoung Kim, Ryan
-Eustice, Aisha Walcott, Been Kim and Abe Bachrach for their feedback
-and patience with earlier versions.
+Many thanks to Richard Roberts for his help with this software. Thanks
+also to John McDonald, Ayoung Kim, Ryan Eustice, Aisha Walcott, Been
+Kim and Abe Bachrach for their feedback and patience with earlier
+versions.
 
 */

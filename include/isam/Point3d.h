@@ -2,10 +2,10 @@
  * @file Point3d.h
  * @brief Simple 3D point class.
  * @author Michael Kaess
- * @version $Id: Point3d.h 2825 2010-08-19 21:35:34Z kaess $
+ * @version $Id: Point3d.h 5182 2011-08-20 01:35:33Z hordurj $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -26,7 +26,8 @@
 
 #pragma once
 
-#include "Vector.h"
+#include <Eigen/Dense>
+
 #include "Point2d.h"
 
 namespace isam {
@@ -42,12 +43,13 @@ class Point3d {
   double _z;
 public:
   static const int dim = 3;
+  static const int size = 3;
   static const char* name() {
     return "Point3d";
   }
   Point3d() : _x(0.), _y(0.), _z(0.) {}
   Point3d(double x, double y, double z) : _x(x), _y(y), _z(z) {}
-  Point3d(const Vector& vec) : _x(vec(0)), _y(vec(1)), _z(vec(2)) {}
+  Point3d(const Eigen::Vector3d& vec) : _x(vec(0)), _y(vec(1)), _z(vec(2)) {}
 
   double x() const {return _x;}
   double y() const {return _y;}
@@ -57,19 +59,33 @@ public:
   void set_y(double y) {_y = y;}
   void set_z(double z) {_z = z;}
 
-  Vector vector() const {
-    return make_Vector(3, _x, _y, _z);
+  Point3d exmap(const Eigen::Vector3d& delta) {
+    Point3d res = *this;
+    res._x += delta(0);
+    res._y += delta(1);
+    res._z += delta(2);
+    return res;
+  }
+
+  Eigen::Vector3d vector() const {
+    Eigen::Vector3d tmp(_x, _y, _z);
+    return tmp;
   }
   void set(double x, double y, double z) {
     _x = x;
     _y = y;
     _z = z;
   }
-  void set(const Vector& v) {
+  void set(const Eigen::Vector3d& v) {
     _x = v(0);
     _y = v(1);
     _z = v(2);
   }
+
+  Point3d to_point3d() {
+    return *this;
+  }
+
   void of_point2d(const Point2d& p) {
     _x = p.x();
     _y = p.y();

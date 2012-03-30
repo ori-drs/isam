@@ -2,10 +2,10 @@
  * @file numericalDiff.h
  * @brief Numerical differentiation.
  * @author Michael Kaess
- * @version $Id: numericalDiff.h 2826 2010-08-20 03:17:43Z kaess $
+ * @version $Id: numericalDiff.h 4038 2011-02-26 04:31:00Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -26,8 +26,10 @@
 
 #pragma once
 
-#include "Vector.h"
-#include "Matrix.h"
+#include <vector>
+#include <Eigen/Dense>
+
+#include "isam/Node.h"
 
 namespace isam {
 
@@ -35,17 +37,18 @@ namespace isam {
 class Function {
 public:
   virtual ~Function() {}
-  virtual Vector evaluate(const Vector&) const = 0;
+  virtual int num_measurements() const = 0;
+  virtual Eigen::VectorXd evaluate() const = 0;
+  virtual std::vector<Node*>& nodes() = 0;
 };
 
 /**
  * Takes a general vector valued function and returns the
  * Jacobian at the linearization point given by x0.
  * @param func Function object with evaluation function that takes and returns vectors.
- * @param x0 Linearization point.
  * @return Matrix containing the Jacobian of func, with
  *         dim(y) rows and dim(x) columns, where y=func(x).
  */
-Matrix numericalDiff(const Function& func, Vector x0);
+Eigen::MatrixXd numericalDiff(Function& func);
 
 }

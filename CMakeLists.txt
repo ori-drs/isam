@@ -23,7 +23,17 @@ set (EXECUTABLE_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/bin" CACHE PATH
 # do not edit - use ccmake to change
 option (PROFILE "Enable profiling" OFF)
 option (USE_LCM "Compile with LCM interface (lcm library needed)" OFF)
-option (USE_GUI "Compile with GUI (SDL library needed)" ON)
+if(NOT DEFINED USE_GUI)
+  # SDL is optional
+  find_package(SDL)
+  if (NOT SDL_FOUND)
+    message(WARNING "\nSDL not found, disabling GUI.")
+    set(USE_GUI_TMP OFF)
+  else(NOT SDL_FOUND)
+    set(USE_GUI_TMP ON)
+  endif()
+  option (USE_GUI "Compile with GUI (SDL library needed)" ${USE_GUI_TMP})
+endif()
 
 add_definitions(-Wall)
 # note: -g automatic for Debug mode, -O3 -DNDEBUG automatic for Release
@@ -40,8 +50,14 @@ if(USE_GUI)
   add_definitions(-DUSE_GUI)
 endif(USE_GUI)
 
-add_definitions(-I${PROJECT_SOURCE_DIR}/include)
+# Eigen3 is needed
+SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/misc)
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+
+include_directories("${PROJECT_SOURCE_DIR}/include")
 
 add_subdirectory(isamlib)
 add_subdirectory(isam)
 add_subdirectory(examples)
+add_subdirectory(misc)

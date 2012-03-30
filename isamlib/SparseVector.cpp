@@ -3,10 +3,10 @@
  * @brief Part of sparse matrix functionality for iSAM.
  * @author Michael Kaess
  * @author Hordur Johannsson
- * @version $Id: SparseVector.cpp 3216 2010-10-19 14:50:36Z kaess $
+ * @version $Id: SparseVector.cpp 4694 2011-06-09 03:16:34Z hordurj $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -35,6 +35,7 @@
 #include "isam/SparseVector.h"
 
 using namespace std;
+using namespace Eigen;
 
 namespace isam {
 
@@ -54,10 +55,14 @@ void SparseVector::_copy_from(const SparseVector& vec) {
 }
 
 void SparseVector::_dealloc() {
-  delete[] _indices;
-  _indices = NULL;
-  delete[] _values;
-  _values = NULL;
+  if (_indices != NULL) {
+    delete[] _indices;
+    _indices = NULL;
+  }
+  if (_values != NULL) {
+    delete[] _values;
+    _values = NULL;
+  }
 }
 
 int SparseVector::_search(int idx) const {
@@ -189,12 +194,15 @@ void SparseVector::copy_raw(int* indices, double* values) const {
 }
 
 bool SparseVector::set(int idx, const double val) {
-  return set(idx, &val, 1);
+  VectorXd tmp(1);
+  tmp << val;
+  return set(idx, tmp);
 }
 
-bool SparseVector::set(int idx, const double* vals, int c) {
+bool SparseVector::set(int idx, const VectorXd& vals) {
   bool created_entry = false;
   int n = 0;
+  int c = vals.rows();
   
   // First check if we can append
   if (_nnz > 0 && idx > _indices[_nnz-1]) {
@@ -208,7 +216,7 @@ bool SparseVector::set(int idx, const double* vals, int c) {
     // BIG ASSUMPTION when writing multiple values:
     // they either all exist or they don't
     for (int i=0;i<c;i++) {
-      _values[n+i] = vals[i];
+      _values[n+i] = vals(i);
     }
   } else {
     // new entries have to be created
@@ -228,7 +236,7 @@ bool SparseVector::set(int idx, const double* vals, int c) {
     _nnz+=c;
     for (int i=0;i<c;i++) {
       _indices[n+i] = idx+i;
-      _values[n+i] = vals[i];
+      _values[n+i] = vals(i);
     }
   }
 

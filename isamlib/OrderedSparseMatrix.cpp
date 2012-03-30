@@ -2,10 +2,10 @@
  * @file OrderedSparseMatrix.cpp
  * @brief Adds column ordering to sparse matrix functionality for iSAM.
  * @author Michael Kaess
- * @version $Id: OrderedSparseMatrix.cpp 2901 2010-08-24 04:53:01Z kaess $
+ * @version $Id: OrderedSparseMatrix.cpp 6377 2012-03-30 20:06:44Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -82,7 +82,8 @@ OrderedSparseMatrix::OrderedSparseMatrix(const OrderedSparseMatrix& mat) : Spars
   _copy_from_OrderedSparseMatrix(mat);
 }
 
-OrderedSparseMatrix::OrderedSparseMatrix(const OrderedSparseMatrix& mat, int num_rows, int num_cols, int first_row, int first_col) :
+OrderedSparseMatrix::OrderedSparseMatrix(const OrderedSparseMatrix& mat,
+                                         int num_rows, int num_cols, int first_row, int first_col) :
     SparseMatrix(mat, num_rows, num_cols, first_row, first_col)
 {
   _allocate_OrderedSparseMatrix(); // note: ignores original ordering

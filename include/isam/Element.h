@@ -2,10 +2,10 @@
  * @file Element.h
  * @brief Basic functionality for nodes and factors of a graph.
  * @author Michael Kaess
- * @version $Id: Element.h 3216 2010-10-19 14:50:36Z kaess $
+ * @version $Id: Element.h 5796 2011-12-07 00:39:30Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -37,6 +37,8 @@ class Element {
 
   const char* _name;
 
+  int _start; // needed for Slam::jacobian
+
 protected:
   int _id;
   int _dim;
@@ -48,10 +50,14 @@ public:
   virtual int unique_id() {return _id;}
   virtual const char* name() const {return _name;}
   inline int dim() const {return _dim;}
+  inline int start() const {return _start;}
 
   virtual void write(std::ostream &out) const {
     out << name();
   }
+
+  friend class Slam;
+  friend class Covariances;
 };
 
 }

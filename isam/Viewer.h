@@ -2,10 +2,10 @@
  * @file Viewer.h
  * @brief 3D visualization.
  * @author Michael Kaess
- * @version $Id: Viewer.h 2918 2010-08-26 20:02:13Z kaess $
+ * @version $Id: Viewer.h 4232 2011-04-02 20:18:18Z hordurj $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -47,8 +47,10 @@ public:
    * @param name Collection name.
    * @param type Type of object (pose, tree etc.)
    */
-  void set_nodes(const std::vector<isam::Pose3d>& nodes,
-                 int id, const std::string& name, int type);
+  void set_nodes(const std::vector<isam::Pose3d, Eigen::aligned_allocator<isam::Pose3d> >& nodes,
+                 int id,
+                 const std::string& name,
+                 int type);
 
   /**
    * Adds or overwrites a collection of links
@@ -70,7 +72,7 @@ public:
    * @param collection Collection number that the covariances refer to.
    * @param is_3d True if 3D covariances.
    */
-  void set_covariances(const std::list<isam::Matrix>& covariances,
+  void set_covariances(const std::list<Eigen::MatrixXd>& covariances,
                        int id, char* name, int collection, bool is_3d) const;
 
   /**

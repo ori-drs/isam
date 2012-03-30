@@ -2,10 +2,10 @@
  * @file SparseSystem.h
  * @brief Adds rhs functionality to sparse matrix for iSAM.
  * @author Michael Kaess
- * @version $Id: SparseSystem.h 2782 2010-08-16 18:44:12Z kaess $
+ * @version $Id: SparseSystem.h 4133 2011-03-22 20:40:38Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -26,23 +26,24 @@
 
 #pragma once
 
-#include "Vector.h"
+#include <Eigen/Dense>
+
 #include "OrderedSparseMatrix.h"
 
 namespace isam {
 
 class SparseSystem : public OrderedSparseMatrix {
-  Vector _rhs;
+  Eigen::VectorXd _rhs;
 public:
   SparseSystem(int num_rows, int num_cols);
   SparseSystem(const SparseSystem& mat);
   SparseSystem(const SparseSystem& mat, int num_rows, int num_cols, int first_row = 0, int first_col = 0);
-  SparseSystem(int num_rows, int num_cols, SparseVector_p* rows, const Vector& rhs);
+  SparseSystem(int num_rows, int num_cols, SparseVector_p* rows, const Eigen::VectorXd& rhs);
   virtual ~SparseSystem();
   const SparseSystem& operator= (const SparseSystem& mat);
 
-  const Vector& rhs() const {return _rhs;}
-  void set_rhs(const Vector& rhs) {_rhs = rhs;}
+  const Eigen::VectorXd& rhs() const {return _rhs;}
+  void set_rhs(const Eigen::VectorXd& rhs) {_rhs = rhs;}
 
   // overridden functions
 
@@ -76,7 +77,7 @@ public:
    * Solve equation system by backsubstitution.
    * @return Solution for x in Rx=b'
    */
-  virtual Vector solve() const;
+  virtual Eigen::VectorXd solve() const;
 
 };
 

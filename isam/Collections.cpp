@@ -2,10 +2,10 @@
  * @file Collections.cpp
  * @brief 3D visualization.
  * @author Michael Kaess
- * @version $Id: Collections.cpp 3216 2010-10-19 14:50:36Z kaess $
+ * @version $Id: Collections.cpp 6335 2012-03-22 23:13:52Z kaess $
  *
- * Copyright (C) 2009-2010 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson and John J. Leonard
+ * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -38,12 +38,12 @@
 
 #include "isam/Pose3d.h"
 #include "isam/SparseMatrix.h"
-#include "isam/Matrix.h"
 
 #include "Collections.h"
 
 using namespace std;
 using namespace isam;
+using namespace Eigen;
 
 #define rad_to_degrees(rad) ((rad)*180/M_PI)
 
@@ -78,6 +78,14 @@ GLUquadricObj* getQuadric() {
     quadric_internal = gluNewQuadric();
   }
   return quadric_internal;
+}
+
+void draw_point(const Point3d& point) {
+  glPointSize(2.0);
+  glBegin(GL_POINTS);
+  glColor3f(1.0,1.0,1.0);
+  glVertex3f(point.x(), point.y(), point.z());
+  glEnd();
 }
 
 void draw_tree(const Point3d& point) {
@@ -159,9 +167,9 @@ void draw_tetra(const Pose3d& pose, double size, bool mark) {
 }
 
 // Calculate eigenvalues for 3x3 symmetric, non-singular matrix.
-void eigenvals(const Matrix& cov, double& eval1, double& eval2, double& eval3) {
+void eigenvals(const MatrixXd& cov, double& eval1, double& eval2, double& eval3) {
   double m = cov.trace()/3.;
-  Matrix b = cov - m*Matrix::eye(3);
+  MatrixXd b = cov - m * eye(3);
   double det_b = b(0,0)*b(1,1)*b(2,2) + b(0,1)*b(1,2)*b(2,0) + b(0,2)*b(1,0)*b(2,1)
     - b(0,0)*b(1,2)*b(2,1) - b(0,1)*b(1,0)*b(2,2) - b(0,2)*b(1,1)*b(2,0);
   double q = det_b/2;
@@ -187,53 +195,57 @@ void eigenvals(const Matrix& cov, double& eval1, double& eval2, double& eval3) {
 }
 
 // Calculate eigenvector for a given eigenvalue.
-Vector eigenvec(const Matrix& mat, double eval) {
-  Matrix a = mat - eval*Matrix::eye(3);
+VectorXd eigenvec(const MatrixXd& mat, double eval) {
+  MatrixXd a = mat - eval * eye(3);
   // zeroing out entries below diagonal is easy
   SparseMatrix s = sparseMatrix_of_matrix(a);
   s.triangulate_with_givens();
-  Vector res(3);
+  VectorXd res(3);
   // multiple cases because underconstrained
   if (s(0,0)==0.) {
-    res.set(0, 1.); // arbitrary
-    res.set(1, 0.);
-    res.set(2, 0.);
+    res(0) = 1.; // arbitrary
+    res(1) = 0.;
+    res(2) = 0.;
   } else {
     if (s(1,1)!=0.) {
-      res.set(2, 1.); // arbitrary
+      res(2) = 1.; // arbitrary
       // partial backsubstitution
-      res.set(1, -s(1,2)/s(1,1));
-      res.set(0, -(s(0,1)*res(1)+s(0,2)) / s(0,0));
+      res(1) = -s(1,2)/s(1,1);
+      res(0) = -(s(0,1)*res(1)+s(0,2)) / s(0,0);
     } else {
-      res.set(1, 1.); // arbitrary
-      res.set(2, 0.);
-      res.set(0, -s(0,1)/s(0,0));
+      res(1) = 1.; // arbitrary
+      res(2) = 0.;
+      res(0) = -s(0,1)/s(0,0);
     }
   }
   // normalize
   return (res/res.norm());
 }
 
-void draw_ellipsoid(const Point3d& center, const Matrix& covariance, bool is_3d) {
-  Matrix cov = covariance;
-  if (!is_3d && covariance.num_cols()==3) {
+void draw_ellipsoid(const Point3d& center, const MatrixXd& covariance, bool is_3d) {
+  MatrixXd cov = covariance;
+  if (!is_3d && covariance.cols()==3) {
     // for 2D pose, remove orientation theta
-    cov = Matrix(0,0, 2,2, cov);
+    cov = cov.topLeftCorner(2, 2);
   }
-  if (cov.num_cols()==2) {
+  if (cov.cols()==2) {
     // for 2x2 matrix, extend to 3x3
-    cov = (cov | Matrix::zeros(2,1)) ^ Matrix::zeros(1,3);
-    cov.set(2, 2, 0.001); // ellipsoid cannot have 0 extension, even if representing 2D ellipse
+    cov.resize(3,3);
+    cov(0,2) = 0;
+    cov(1,2) = 0;
+    cov(2,0) = 0;
+    cov(2,1) = 0;
+    cov(2,2) = 0.001; // ellipsoid cannot have 0 extension, even if representing 2D ellipse
   }
   // cut Matrix to 3x3 (necessary for Pose3d)
-  cov = Matrix(0,0, 3,3, cov);
+  cov = cov.topLeftCorner(3,3);
 
   // eigenvectors and eigenvalues
   double eval1, eval2, eval3;
   eigenvals(cov, eval1, eval2, eval3);
-  Vector evec1 = eigenvec(cov, eval1);
-  Vector evec2 = eigenvec(cov, eval2);
-  Vector evec3 = eigenvec(cov, eval3);
+  VectorXd evec1 = eigenvec(cov, eval1);
+  VectorXd evec2 = eigenvec(cov, eval2);
+  VectorXd evec3 = eigenvec(cov, eval3);
 
   // draw ellipsoid
   double k = 1.; // scale factor
@@ -260,10 +272,13 @@ void draw_ellipsoid(const Point3d& center, const Matrix& covariance, bool is_3d)
   }
 }
 
-ObjCollection::ObjCollection(int id, string name, int type, const vector<Pose3d>& nodes) : Collection(id, name, type) {
+ObjCollection::ObjCollection(int id,
+     string name,
+     int type,
+     const vector<Pose3d, Eigen::aligned_allocator<isam::Pose3d> >& nodes) : Collection(id, name, type) {
   maxid = nodes.size()-1;
   int i = 0;
-  for (vector<Pose3d>::const_iterator it = nodes.begin(); it!=nodes.end(); it++, i++) {
+  for (vector<Pose3d, Eigen::aligned_allocator<isam::Pose3d> >::const_iterator it = nodes.begin(); it!=nodes.end(); it++, i++) {
     objs.insert(make_pair(i, *it));
   }
 }
@@ -293,6 +308,9 @@ void ObjCollection::draw() {
       break;
     case VIEWER_OBJ_TREE:
       draw_tree(obj.trans());
+      break;
+    case VIEWER_OBJ_POINT3D:
+      draw_point(obj.trans());
       break;
     }
   }
@@ -335,7 +353,7 @@ void LinkCollection::draw() {
   glPopAttrib();
 }
 
-CovCollection::CovCollection(int id, string name, const list<Matrix>& covs, int collection, bool is_3d)
+CovCollection::CovCollection(int id, string name, const list<MatrixXd>& covs, int collection, bool is_3d)
   : Collection(id, name, type), covs(covs), collection(collection), is_3d(is_3d) {}
 
 void CovCollection::draw() {
@@ -345,7 +363,7 @@ void CovCollection::draw() {
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   int i=0;
   for (covs_t::iterator it = covs.begin(); it != covs.end(); it++, i++) {
-    Matrix& cov = *it;
+    MatrixXd& cov = *it;
     collections_t::iterator collection_it = collections.find(collection);
     if (collection_it != collections.end()) {
       const ObjCollection::objs_t& objs = ((ObjCollection*)collection_it->second)->objs;
