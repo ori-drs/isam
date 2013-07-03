@@ -2,10 +2,11 @@
  * @file Point3d.h
  * @brief Simple 3D point class.
  * @author Michael Kaess
- * @version $Id: Point3d.h 5182 2011-08-20 01:35:33Z hordurj $
+ * @version $Id: Point3d.h 8263 2013-04-10 14:02:19Z carlevar $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -59,7 +60,7 @@ public:
   void set_y(double y) {_y = y;}
   void set_z(double z) {_z = z;}
 
-  Point3d exmap(const Eigen::Vector3d& delta) {
+  Point3d exmap(const Eigen::Vector3d& delta) const {
     Point3d res = *this;
     res._x += delta(0);
     res._y += delta(1);
@@ -80,6 +81,10 @@ public:
     _x = v(0);
     _y = v(1);
     _z = v(2);
+  }
+  
+  Eigen::VectorXb is_angle() const {
+    return Eigen::VectorXb::Zero(size);
   }
 
   Point3d to_point3d() {

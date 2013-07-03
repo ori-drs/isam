@@ -2,10 +2,11 @@
  * @file slam3d.h
  * @brief Provides specialized nodes and factors for 3D SLAM
  * @author Michael Kaess
- * @version $Id: slam3d.h 6369 2012-03-28 23:26:19Z kaess $
+ * @version $Id: slam3d.h 7610 2012-10-25 10:21:12Z hordurj $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -36,7 +37,23 @@
 namespace isam {
 
 typedef NodeT<Pose3d> Pose3d_Node;
-typedef NodeT<Point3d> Point3d_Node;
+
+template<class T>
+class Point3dT_Node : public NodeT<T>
+{
+  Pose3d_Node* _base;
+public:
+  Point3dT_Node() : _base(NULL) {}
+  Point3dT_Node(const char* name) : NodeT<T>(name), _base(NULL) {}
+
+  ~Point3dT_Node() {}
+
+  void set_base(Pose3d_Node* base) { _base = base; }
+  Pose3d_Node* base() { return _base; }
+};
+
+typedef Point3dT_Node<Point3d> Point3d_Node;
+typedef Point3dT_Node<Point3dh> Point3dh_Node;
 
 class Pose3d_Factor : public FactorT<Pose3d> {
   Pose3d_Node* _pose;

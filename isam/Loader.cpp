@@ -2,10 +2,11 @@
  * @file Loader.cpp
  * @brief Loading files with constraints/factors.
  * @author Michael Kaess
- * @version $Id: Loader.cpp 6353 2012-03-26 22:16:29Z kaess $
+ * @version $Id: Loader.cpp 6902 2012-06-26 02:43:17Z kaess $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -342,6 +343,7 @@ bool Loader::parse_line(char* str) {
         //                0.,  0.,  0., i44, i45, i46,
         //                0.,  0.,  0.,  0., i55, i56,
         //                0.,  0.,  0.,  0.,  0., i66);
+        // todo: this is wrong in the presence of off-diagonal entries because sqrtinf...
         0.,  0.,  0., i66, i56, i46, // note: reversed yaw, pitch, roll, also see sscanf above
         0.,  0.,  0.,  0., i55, i45,
         0.,  0.,  0.,  0.,  0., i44;

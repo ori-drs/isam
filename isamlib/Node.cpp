@@ -1,8 +1,9 @@
 /**
- * @file Noise.h
- * @brief Various noise models.
+ * @file Node.cpp
+ * @brief A single variable node
  * @author Michael Kaess
- * @version $Id: Noise.h 5797 2011-12-07 03:50:41Z kaess $
+ * @author Hordur Johannsson
+ * @version $Id:  $
  *
  * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
  * Michael Kaess, Hordur Johannsson, David Rosen,
@@ -25,40 +26,19 @@
  *
  */
 
-#pragma once
+#include "isam/Node.h"
+#include "isam/Factor.h"
 
-#include <Eigen/Dense>
-#include <Eigen/LU> 
-
-namespace isam {
-
-// general noise model class
-class Noise {
-public:
-  Eigen::MatrixXd _sqrtinf;
-  const Eigen::MatrixXd& sqrtinf() const {return _sqrtinf;}
-};
-
-// noise model based on square root information matrix
-class SqrtInformation : public Noise {
-public:
-  SqrtInformation(const Eigen::MatrixXd& sqrtinf) {_sqrtinf = sqrtinf;}
-};
-
-// noise model based on information matrix
-class Information : public Noise {
-public:
-  Information(const Eigen::MatrixXd& inf) {
-    _sqrtinf = inf.llt().matrixU();
-  }
-};
-
-// noise model based on covariance matrix
-class Covariance : public Noise {
-public:
-  Covariance(const Eigen::MatrixXd& cov) {
-    _sqrtinf = cov.inverse().llt().matrixU();
-  }
-};
-
+namespace isam
+{
+void Node::mark_deleted() {
+  _deleted = true;
+  for (std::list<Factor*>::iterator factor = _factors.begin(); factor != _factors.end(); ++factor)
+    (*factor)->mark_deleted();
 }
+void Node::erase_marked_factors() {
+  for (std::list<Factor*>::iterator factor = _factors.begin(); factor != _factors.end();)
+    if ((*factor)->deleted()) factor = _factors.erase(factor);
+    else ++factor;
+}
+} // namespace - isam

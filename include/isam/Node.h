@@ -2,10 +2,11 @@
  * @file Node.h
  * @brief Graph node for iSAM.
  * @author Michael Kaess
- * @version $Id: Node.h 5773 2011-11-28 23:42:49Z dmrosen $
+ * @version $Id: Node.h 8263 2013-04-10 14:02:19Z carlevar $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -31,6 +32,10 @@
 
 #include "Element.h"
 
+namespace Eigen {
+  typedef Matrix<bool, Dynamic, 1> VectorXb;
+}
+
 namespace isam {
 
 enum Selector {LINPOINT, ESTIMATE};
@@ -45,6 +50,7 @@ class Node : public Element {
   }
 
   static int _next_id;
+  bool _deleted;
 
 protected:
 
@@ -52,7 +58,7 @@ protected:
 
 public:
 
-  Node(const char* name, int dim) : Element(name, dim) {
+  Node(const char* name, int dim) : Element(name, dim), _deleted(false) {
     _id = _next_id++;
   }
 
@@ -63,6 +69,7 @@ public:
   virtual Eigen::VectorXd vector(Selector s = ESTIMATE) const = 0;
 
   virtual Eigen::VectorXd vector0() const = 0;
+  virtual Eigen::VectorXb is_angle() const {return Eigen::VectorXb::Zero(_dim);}
 
   virtual void update(const Eigen::VectorXd& v) = 0;
   virtual void update0(const Eigen::VectorXd& v) = 0;
@@ -78,6 +85,11 @@ public:
   void remove_factor(Factor* e) {_factors.remove(e);}
 
   const std::list<Factor*>& factors() {return _factors;}
+
+  bool deleted() const { return _deleted; }
+
+  void mark_deleted();
+  void erase_marked_factors();
 
   virtual void write(std::ostream &out) const = 0;
 };
@@ -119,6 +131,7 @@ public:
 
   Eigen::VectorXd vector(Selector s = ESTIMATE) const {return (s==ESTIMATE)?_value->vector():_value0->vector();}
   Eigen::VectorXd vector0() const {return _value0->vector();}
+  Eigen::VectorXb is_angle() const {return _value->is_angle();}
 
   void update(const Eigen::VectorXd& v) {_value->set(v);}
   void update0(const Eigen::VectorXd& v) {_value0->set(v);}

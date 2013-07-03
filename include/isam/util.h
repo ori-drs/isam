@@ -2,10 +2,11 @@
  * @file util.h
  * @brief Basic utility functions that are independent of iSAM.
  * @author Michael Kaess
- * @version $Id: util.h 6377 2012-03-30 20:06:44Z kaess $
+ * @version $Id: util.h 8263 2013-04-10 14:02:19Z carlevar $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -113,6 +114,62 @@ inline double deg_to_rad(double d) {
 inline double rad_to_deg(double r) {
   return (r/PI*180.);
 }
+
+/**
+ * Calculate the pseudo inverse of an arbitrary matrix using the SVD
+ * @input a Eigen matrix to invert
+ * @input eps Numerical epsilon to determine zero singular values (defaults to std::numeric_limits::eps)
+ * @return Eigen matrix of same type as a
+ */
+template<typename T>
+T pinv(const T &a, double eps = std::numeric_limits<typename T::Scalar>::epsilon()) {
+
+  bool m_lt_n = (a.rows() < a.cols());
+
+  Eigen::JacobiSVD<T> svd;
+  if (m_lt_n) {
+      T tmp = a.transpose();
+      svd = tmp.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
+  } else {
+      svd = a.jacobiSvd(Eigen::ComputeThinU | Eigen::ComputeThinV);
+  }
+
+  typename T::Scalar tolerance = eps * std::max(a.cols(), a.rows()) * svd.singularValues().array().abs().maxCoeff();
+
+  T result = svd.matrixV() *
+             T( (svd.singularValues().array().abs() > tolerance).select(svd.singularValues().array().inverse(), 0) ).asDiagonal() *
+             svd.matrixU().adjoint();
+
+  if (m_lt_n) {
+      return result.transpose();
+  } else {
+      return result;
+  }
+}
+
+/**
+ * Calculate the pseudo inverse of an positive semidefinite matrix using the eigenvalue decomposition
+ * @input a Eigen matrix to invert
+ * @input eps Numerical epsilon to determine zero singular values (defaults to std::numeric_limits::eps)
+ * @return Eigen matrix of same type as a
+ */
+template<typename T>
+T posdef_pinv(const T &a, double eps = std::numeric_limits<typename T::Scalar>::epsilon()) {
+
+  Eigen::SelfAdjointEigenSolver<T> eig(a);
+  if (eig.info() != Eigen::Success) {
+    return T();
+  }
+
+  typename T::Scalar tolerance = eps * std::max(a.cols(), a.rows()) * eig.eigenvalues().array().abs().maxCoeff();
+
+  T result = eig.eigenvectors() *
+             T( (eig.eigenvalues().array() > tolerance).select(eig.eigenvalues().array().inverse(), 0) ).asDiagonal() *
+             eig.eigenvectors().transpose();
+
+  return result;
+}
+
 
 #ifdef NDEBUG
 // Release mode

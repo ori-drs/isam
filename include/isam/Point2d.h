@@ -2,10 +2,11 @@
  * @file Point2d.h
  * @brief Simple 2D point class.
  * @author Michael Kaess
- * @version $Id: Point2d.h 4133 2011-03-22 20:40:38Z kaess $
+ * @version $Id: Point2d.h 8263 2013-04-10 14:02:19Z carlevar $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -27,6 +28,10 @@
 #pragma once
 
 #include <Eigen/Dense>
+
+namespace Eigen {
+ typedef Matrix<bool, Dynamic, 1> VectorXb;
+}
 
 namespace isam {
 
@@ -77,7 +82,11 @@ public:
   void write(std::ostream &out) const {
     out << "(" << _x << ", " << _y << ")";
   }
-
+  
+  Eigen::VectorXb is_angle() const {
+    return Eigen::VectorXb::Zero(size);
+  }
+  
 };
 
 }

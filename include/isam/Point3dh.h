@@ -2,10 +2,11 @@
  * @file Point3dh.h
  * @brief 3D homogeneous point class.
  * @author Michael Kaess
- * @version $Id: Point3dh.h 6377 2012-03-30 20:06:44Z kaess $
+ * @version $Id: Point3dh.h 8263 2013-04-10 14:02:19Z carlevar $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -79,7 +80,7 @@ public:
     return Eigen::Vector4d(S*delta(0), S*delta(1), S*delta(2), C);
   }
 
-  Point3dh exmap(const Eigen::Vector3d& delta) {
+  Point3dh exmap(const Eigen::Vector3d& delta) const {
 #if 0
     // solution with Householder matrix following HZ second edition
 
@@ -143,6 +144,12 @@ public:
     Eigen::VectorXd tmp(4);
     tmp << _x, _y, _z, _w;
     return tmp;
+  }
+
+  Eigen::VectorXb is_angle() const {
+    Eigen::VectorXb isang (4);
+    isang << false, false, false, false;
+    return isang;
   }
 
   void set(double x, double y, double z, double w) {

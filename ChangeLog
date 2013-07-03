@@ -1,4 +1,22 @@
 
+iSAM 1.7 (Jul 2, 2013)
+- Generic Linear Constraint (GLC) added to support sparsification based
+  on the paper "Generic Factor-Based Node Marginalization and Edge
+  Sparsification for Pose-Graph SLAM" by Nicholas Carleavaris-Bianco and
+  Ryan Eustice, ICRA 2013. See examples/glc.cpp
+- Relative parameterization for homogeneous points added (McDonald et al.,
+  ECMR 11 and RAS 13)
+- Fixed compile problem in slam_monocular.h
+- Bug fix in non-relative formulation of slam_stereo.h
+- Numerically more stable quaternion conversion
+- Changed stack allocations of SparseVector to heap allocations to allow
+  for very large vectors
+- Added FindCholmod.cmake as a more portable way of finding CHOLMOD
+- Added option for marking nodes as deleted. The marked nodes and factors
+  are then deleted during update. This is more efficient then individually
+  removing nodes and factors
+- Added support for multiple parallel instances of covariance recovery
+
 iSAM 1.6 (Mar 30, 2012)
 - Factors now take a new Noise class instead of the square root
   information matrix; existing calls are converted by wrapping the

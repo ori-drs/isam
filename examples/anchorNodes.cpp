@@ -10,8 +10,9 @@
  * IEEE Intl. Conf. on Robotics and Automation, ICRA, (Anchorage, Alaska), May 2010, pp. 3185-3192.
  * online available at http://www.cc.gatech.edu/~kaess/pub/Kim10icra.html
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *

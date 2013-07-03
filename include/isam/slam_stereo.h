@@ -2,10 +2,11 @@
  * @file slam_stereo.h
  * @brief Provides specialized nodes and factors for stereo vision applications.
  * @author Michael Kaess
- * @version $Id: slam_stereo.h 6369 2012-03-28 23:26:19Z kaess $
+ * @version $Id: slam_stereo.h 7956 2013-01-23 16:46:03Z kaess $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -104,6 +105,11 @@ public:
     // right camera
     double u2 = (x - w*_b) * fz + _pp(0);
     bool valid = ((w==0&&z>0) || (z/w) > 0.); // infront of camera?
+
+    // Setting a point valid can make the system (hj 25/10/2012)
+    // ill conditioned, i.e. if point goes behind all cameras that see it
+    //valid = true;
+
     return StereoMeasurement(u, v, u2, valid);
   }
 
@@ -123,8 +129,6 @@ public:
 
 };
 
-typedef NodeT<Point3dh> Point3dh_Node;
-
 /**
  * Stereo observation of a 3D homogeneous point;
  * projective or Euclidean geometry depending on constructor used.
@@ -134,37 +138,68 @@ class Stereo_Factor : public FactorT<StereoMeasurement> {
   Point3d_Node* _point;
   Point3dh_Node* _point_h;
   StereoCamera* _camera;
+  bool _relative;
+  Pose3d_Node* _base;
 
 public:
 
   // constructor for projective geometry
   Stereo_Factor(Pose3d_Node* pose, Point3dh_Node* point, StereoCamera* camera,
-                         const StereoMeasurement& measure, const Noise& noise)
+                         const StereoMeasurement& measure, const Noise& noise, bool relative = false)
     : FactorT<StereoMeasurement>("Stereo_Factor", 3, noise, measure),
-      _pose(pose), _point(NULL), _point_h(point), _camera(camera) {
+      _pose(pose), _point(NULL), _point_h(point), _camera(camera), _relative(relative), _base(NULL) {
     // StereoCamera could also be a node later (either with 0 variables,
     // or with calibration as variables)
     _nodes.resize(2);
     _nodes[0] = pose;
     _nodes[1] = point;
+    // for relative parameterization recover base pose
+    if (_relative) {
+      if (!point->factors().empty()) {
+        _nodes.resize(3);
+        _nodes[2] = point->factors().front()->nodes()[0];
+        // todo: first factor might refer to a prior or other type of node...
+        _base = dynamic_cast<Pose3d_Node*>(_nodes[2]);
+      } else {
+        _base = _pose;
+      }
+      point->set_base(_base);
+    }
   }
 
   // constructor for Euclidean geometry
   // WARNING: only use for points at short range
   Stereo_Factor(Pose3d_Node* pose, Point3d_Node* point, StereoCamera* camera,
-                         const StereoMeasurement& measure, const Noise& noise)
+                         const StereoMeasurement& measure, const Noise& noise, bool relative = false)
     : FactorT<StereoMeasurement>("Stereo_Factor", 3, noise, measure),
-      _pose(pose), _point(point), _point_h(NULL), _camera(camera) {
+      _pose(pose), _point(point), _point_h(NULL), _camera(camera), _relative(relative), _base(NULL) {
     _nodes.resize(2);
     _nodes[0] = pose;
     _nodes[1] = point;
+    // for relative parameterization recover base pose
+    if (_relative) {
+      if (!point->factors().empty()) {
+        _nodes.resize(3);
+        _nodes[2] = point->factors().front()->nodes()[0];
+        // todo: first factor might refer to a prior or other type of node...
+        _base = dynamic_cast<Pose3d_Node*>(_nodes[2]);
+      } else {
+        _base = _pose;
+      }
+      point->set_base(_base);
+    }
   }
 
   void initialize() {
     require(_pose->initialized(), "Stereo_Factor requires pose to be initialized");
     bool initialized = (_point_h!=NULL) ? _point_h->initialized() : _point->initialized();
     if (!initialized) {
-      Point3dh predict = _camera->backproject(_pose->value(), _measure);
+      Point3dh predict;
+      if (_relative) {
+        predict = _camera->backproject(Pose3d(), _measure);
+      } else {
+        predict = _camera->backproject(_pose->value(), _measure);
+      }
       // normalize homogeneous vector
       predict = Point3dh(predict.vector()).normalize();
       if (_point_h!=NULL) {
@@ -177,11 +212,22 @@ public:
 
   Eigen::VectorXd basic_error(Selector s = ESTIMATE) const {
     Point3dh point = (_point_h!=NULL) ? _point_h->value(s) : _point->value(s);
-    StereoMeasurement predicted = _camera->project(_pose->value(s), point);
+    Pose3d pose = _pose->value(s);
+    if (_base) {
+      // pose of camera relative to base camera (which might be this one!)
+      pose = pose.ominus(_base->value(s));
+    }
+    StereoMeasurement predicted = _camera->project(pose, point);
     if (_point_h!=NULL || predicted.valid == true) {
       return (predicted.vector() - _measure.vector());
     } else {
-      std::cout << "Warning - StereoFactor.basic_error: point behind camera, dropping term.\n";
+      //std::cout << "Warning - StereoFactor.basic_error: point behind camera, dropping term.\n";
+      std::cout << "Warning - StereoFactor.basic_error: " << this
+          << " #: " << _nodes[1]->factors().size() << " " << _nodes[0]->factors().size()
+          << " \npoint: " << point << " ptr: " << _point
+          << " pose: " << pose << " ptr: " << _pose
+          << " \npredicted: " << predicted.vector().transpose()
+          << " measure: " << _measure.vector().transpose() << std::endl;
       return Eigen::Vector3d::Zero();
     }
   }

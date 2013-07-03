@@ -2,10 +2,11 @@
  * @file Factor.h
  * @brief Graph factor for iSAM.
  * @author Michael Kaess
- * @version $Id: Factor.h 5960 2012-01-23 00:27:20Z kaess $
+ * @version $Id: Factor.h 7610 2012-10-25 10:21:12Z hordurj $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -41,7 +42,7 @@
 
 namespace isam {
 
-typedef double (*cost_func_t)(double);
+//typedef double (*cost_func_t)(double);
 
 
 // Factor of the graph of measurements between Nodes.
@@ -54,7 +55,7 @@ class Factor : public Element, Function {
   cost_func_t *ptr_cost_func;
 
   static int _next_id;
-
+  bool _deleted;
 protected:
 
   const Noise _noise;
@@ -77,7 +78,8 @@ public:
 
   std::vector<Node*>& nodes() {return _nodes;}
 
-  Factor(const char* name, int dim, const Noise& noise) : Element(name, dim), ptr_cost_func(NULL), _noise(noise) {
+  Factor(const char* name, int dim, const Noise& noise)
+    : Element(name, dim), ptr_cost_func(NULL), _deleted(false), _noise(noise) {
 #ifndef NDEBUG
     // all lower triagular entries below the diagonal must be 0
     for (int r=0; r<_noise.sqrtinf().rows(); r++) {
@@ -138,6 +140,9 @@ public:
   int num_measurements() const {
     return dim();
   }
+
+  void mark_deleted() { _deleted = true; }
+  bool deleted() const { return _deleted; }
 
   virtual void write(std::ostream &out) const {
     Element::write(out);

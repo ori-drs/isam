@@ -2,10 +2,11 @@
  * @file Pose2d.h
  * @brief Simple 2D pose class.
  * @author Michael Kaess
- * @version $Id: Pose2d.h 4133 2011-03-22 20:40:38Z kaess $
+ * @version $Id: Pose2d.h 8263 2013-04-10 14:02:19Z carlevar $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -32,6 +33,10 @@
 
 #include "util.h"
 #include "Point2d.h"
+
+namespace Eigen {
+ typedef Matrix<bool, Dynamic, 1> VectorXb;
+}
 
 namespace isam {
 
@@ -88,6 +93,12 @@ public:
   }
   void write(std::ostream &out) const {
     out << "(" << _x << ", " << _y << ", " << _t << ")";
+  }
+  
+  Eigen::VectorXb is_angle() const {
+    Eigen::VectorXb isang (dim);
+    isang << false, false, true;
+    return isang;
   }
 
   /**

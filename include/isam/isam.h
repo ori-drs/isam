@@ -2,10 +2,11 @@
  * @file isam.h
  * @brief Main isam header file.
  * @author Michael Kaess
- * @version $Id: isam.h 6377 2012-03-30 20:06:44Z kaess $
+ * @version $Id: isam.h 6378 2012-03-30 20:42:53Z kaess $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -43,7 +44,7 @@
 
 // Doxygen documentation follows
 
-/** @mainpage iSAM: Incremental Smoothing and Mapping
+/** @mainpage iSAM: Incremental Smoothing and Mapping (v1.6)
 
 
 @section intro_what What is iSAM?

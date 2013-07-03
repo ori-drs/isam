@@ -2,10 +2,11 @@
  * @file Covariances.cpp
  * @brief Providing access to entries of the covariance.
  * @author Michael Kaess
- * @version $Id: Covariances.cpp 5797 2011-12-07 03:50:41Z kaess $
+ * @version $Id: Covariances.cpp 7858 2013-01-14 03:50:24Z kaess $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -91,7 +92,7 @@ list<MatrixXd> Covariances::marginal(const node_lists_t& node_lists) const {
         }
       }
     }
-    return cov_marginal(R, index_lists);
+    return cov_marginal(R, _cache, index_lists);
   }
   list<MatrixXd> empty_list;
   return empty_list;
@@ -135,7 +136,7 @@ list<MatrixXd> Covariances::access(const node_pair_list_t& node_pair_list) const
         }
       }
     }
-    list<double> covs = cov_marginal(R, index_list);
+    list<double> covs = cov_marginal(R, _cache, index_list);
 
     // assemble into block matrices
     list<MatrixXd> result;

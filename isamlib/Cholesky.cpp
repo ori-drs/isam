@@ -2,10 +2,11 @@
  * @file Cholesky.cpp
  * @brief Cholesky batch factorization using CHOLMOD by Tim Davis.
  * @author Michael Kaess
- * @version $Id: Cholesky.cpp 5042 2011-07-23 01:46:18Z kaess $
+ * @version $Id: Cholesky.cpp 7428 2012-09-26 22:45:13Z hordurj $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -196,7 +197,7 @@ private:
   void of_cholmod_transp(const cholmod_sparse* T, SparseSystem& A, int* order) {
     int nrow = T->ncol; // swapped for transpose
     int ncol = T->nrow;
-    SparseVector_p rows[nrow];
+    SparseVector_p* rows = new SparseVector_p[nrow];
     int *p = (int*)T->p;
     int *i = (int*)T->i;
     double* x = (double*)T->x;
@@ -208,6 +209,7 @@ private:
       p++;
     }
     A.import_rows_ordered(nrow, ncol, rows, order);
+    delete [] rows;
   }
 
 };

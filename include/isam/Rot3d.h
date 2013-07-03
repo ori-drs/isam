@@ -2,10 +2,11 @@
  * @file Rot3d.h
  * @brief 3D rotation class.
  * @author Michael Kaess
- * @version $Id: Rot3d.h 6377 2012-03-30 20:06:44Z kaess $
+ * @version $Id: Rot3d.h 7625 2012-10-30 18:40:38Z kaess $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -115,9 +116,11 @@ public:
     const double q1 = q.x();
     const double q2 = q.y();
     const double q3 = q.z();
-    roll = atan2(2*(q0*q1+q2*q3), 1-2*(q1*q1+q2*q2));
-    pitch = asin(2*(q0*q2-q3*q1));
-    yaw = atan2(2*(q0*q3+q1*q2), 1-2*(q2*q2+q3*q3));
+//    roll = atan2(2*(q0*q1+q2*q3), 1-2*(q1*q1+q2*q2));
+    roll = atan2(2.0*(q0*q1+q2*q3), q0*q0-q1*q1-q2*q2+q3*q3); // numerically more stable (thanks to Dehann for pointing this out)
+    pitch = asin(2.0*(q0*q2-q3*q1));
+//    yaw = atan2(2*(q0*q3+q1*q2), 1-2*(q2*q2+q3*q3));
+    yaw = atan2(2.0*(q0*q3+q1*q2), q0*q0+q1*q1-q2*q2-q3*q3);
   }
 
   static Eigen::Quaterniond delta3_to_quat(const Eigen::Vector3d& delta) {
@@ -223,7 +226,7 @@ public:
   }
 
 
-  Rot3d exmap(const Eigen::VectorXd& delta) {
+  Rot3d exmap(const Eigen::VectorXd& delta) const {
 #if 1
     // direct solution by mapping to quaternion (following Grassia98jgt)
     Rot3d rot(_quat * delta3_to_quat(delta));
@@ -266,6 +269,13 @@ public:
     return _wRo;
   }
 
+  /**
+   * Return inverse rotation by transeposing.
+   * @return oRw
+   */
+  Eigen::Matrix3d oRw() const {
+    return wRo().transpose();
+  }
 
 #else
 
@@ -318,7 +328,7 @@ public:
     _yaw = yaw; _pitch = pitch; _roll = roll;
   }
 
-  Rot3d exmap(const Eigen::VectorXd& delta) {
+  Rot3d exmap(const Eigen::VectorXd& delta) const {
     Rot3d res = *this;
     res._yaw   = standardRad(res._yaw   + delta(0));
     res._pitch = standardRad(res._pitch + delta(1));

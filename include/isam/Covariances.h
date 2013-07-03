@@ -2,10 +2,11 @@
 * @file Covariances.h
 * @brief Providing access to entries of the covariance.
 * @author Michael Kaess
-* @version $Id: Covariances.h 6244 2012-02-25 15:28:32Z kaess $
+* @version $Id: Covariances.h 7858 2013-01-14 03:50:24Z kaess $
 *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -32,6 +33,7 @@
 
 #include "SparseSystem.h"
 #include "Node.h"
+#include "covariance.h"
 
 namespace isam {
 
@@ -45,6 +47,8 @@ private:
   // ...or we operate on a copy of the relevant data from a Slam object
   SparseSystem _R;
   std::map<Node*, std::pair<int, int> > _index;
+
+  mutable CovarianceCache _cache;
 
   // utility function for _index
   int get_start(Node* node) const;

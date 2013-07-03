@@ -2,10 +2,11 @@
  * @file slam_monocular.h
  * @brief Provides nodes and factors for monocular vision applications.
  * @author Michael Kaess
- * @version $Id: slam_monocular.h 6369 2012-03-28 23:26:19Z kaess $
+ * @version $Id: slam_monocular.h 8429 2013-05-15 02:22:17Z kaess $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -111,7 +112,7 @@ public:
 
 };
 
-typedef NodeT<Point3dh> Point3dh_Node;
+//typedef NodeT<Point3dh> Point3dh_Node;
 
 /**
  * Monocular observation of a 3D homogeneous point;
@@ -127,8 +128,8 @@ public:
 
   // constructor for projective geometry
   Monocular_Factor(Pose3d_Node* pose, Point3dh_Node* point, MonocularCamera* camera,
-      const MonocularMeasurement& measure, const Eigen::MatrixXd& sqrtinf)
-    : FactorT<MonocularMeasurement>("Monocular_Factor", 2, sqrtinf, measure),
+                   const MonocularMeasurement& measure, const isam::Noise& noise)
+    : FactorT<MonocularMeasurement>("Monocular_Factor", 2, noise, measure),
       _pose(pose), _point(NULL), _point_h(point), _camera(camera) {
     // MonocularCamera could also be a node later (either with 0 variables,
     // or with calibration as variables)
@@ -139,8 +140,8 @@ public:
 
   // constructor for Euclidean geometry - WARNING: only use for points at short range
   Monocular_Factor(Pose3d_Node* pose, Point3d_Node* point, MonocularCamera* camera,
-      const MonocularMeasurement& measure, const Eigen::MatrixXd& sqrtinf)
-    : FactorT<MonocularMeasurement>("Monocular_Factor", 2, sqrtinf, measure),
+                   const MonocularMeasurement& measure, const isam::Noise& noise)
+    : FactorT<MonocularMeasurement>("Monocular_Factor", 2, noise, measure),
       _pose(pose), _point(point), _point_h(NULL), _camera(camera) {
     _nodes.resize(2);
     _nodes[0] = pose;

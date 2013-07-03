@@ -51,7 +51,7 @@ if(USE_GUI)
 endif(USE_GUI)
 
 # Eigen3 is needed
-SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/misc)
+SET(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 

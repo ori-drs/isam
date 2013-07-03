@@ -2,10 +2,11 @@
  * @file Jacobian.h
  * @brief Jacobian and terms.
  * @author Michael Kaess
- * @version $Id: Jacobian.h 5797 2011-12-07 03:50:41Z kaess $
+ * @version $Id: Jacobian.h 6536 2012-04-22 16:30:15Z kaess $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -35,6 +36,10 @@ typedef double (*cost_func_t)(double);
 
 // Elementary Jacobian for one specific variable/node, potentially containing multiple measurement rows.
 class Term {
+  friend std::ostream& operator<<(std::ostream& output, const Term& t) {
+    t.write(output);
+    return output;
+  }
 
   Node* _node;
 
@@ -56,12 +61,20 @@ public:
       }
     }
   }
+
+  void write(std::ostream &out) const {
+    out << _term << std::endl;
+  }
 };
 
 typedef std::list<Term> Terms;
 
 // Jacobian consisting of multiple blocks.
 class Jacobian {
+  friend std::ostream& operator<<(std::ostream& output, const Jacobian& t) {
+    t.write(output);
+    return output;
+  }
 
   int _dimtotal;
 
@@ -95,6 +108,15 @@ public:
   }
   
   int dimtotal() const { return _dimtotal; }
+
+  void write(std::ostream &out) const {
+    int i=1;
+    for (Terms::const_iterator it = _terms.begin(); it != _terms.end(); it++, i++) {
+      out << "Term " << i << ":" << std::endl;
+      out << *it;
+    }
+    out << "rhs: " << std::endl << _residual << std::endl;
+  }
 };
 
 }

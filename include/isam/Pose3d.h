@@ -2,10 +2,11 @@
  * @file Pose3d.h
  * @brief 3D pose class.
  * @author Michael Kaess
- * @version $Id: Pose3d.h 6234 2012-02-24 01:32:44Z kaess $
+ * @version $Id: Pose3d.h 8263 2013-04-10 14:02:19Z carlevar $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -63,7 +64,7 @@
 
 namespace isam {
 
-typedef Eigen::Matrix< double , 6 , 1> Vector6d;
+typedef Eigen::Matrix< double, 6, 1> Vector6d;
 
 class Pose3d {
   friend std::ostream& operator<<(std::ostream& out, const Pose3d& p) {
@@ -126,7 +127,7 @@ public:
   void set_pitch(double pitch) {_rot.set_pitch(pitch);}
   void set_roll (double roll)  {_rot.set_roll(roll);}
 
-  Pose3d exmap(const Vector6d& delta) {
+  Pose3d exmap(const Vector6d& delta) const {
     Pose3d res = *this;
     res._t   = res._t.exmap(delta.head(3));
     res._rot = res._rot.exmap(delta.tail(3));
@@ -169,6 +170,12 @@ public:
         << yaw() << ", " << pitch() << ", " << roll() << ")";
   }
 
+  Eigen::VectorXb is_angle() const {
+    Eigen::VectorXb isang (dim);
+    isang << false, false, false, true, true, true;
+    return isang;
+  }
+  
   /**
    * Convert Pose3 to homogeneous 4x4 transformation matrix.
    * The returned matrix is the object coordinate frame in the world

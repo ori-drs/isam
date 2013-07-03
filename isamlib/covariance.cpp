@@ -2,10 +2,12 @@
  * @file covariance.cpp
  * @brief Recovery of marginal covariance matrix, for details see Kaess09ras.
  * @author Michael Kaess
- * @version $Id: covariance.cpp 4975 2011-07-13 17:49:09Z kaess $
+ * @author Nicholas Carlevaris-Bianco
+ * @version $Id: covariance.cpp 8578 2013-07-01 00:28:49Z kaess $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -33,82 +35,55 @@
 using namespace std;
 using namespace Eigen;
 
-#if 1
-#include <tr1/unordered_map>
-using namespace tr1;
-#else
-#include "boost/unordered_map.hpp"
-using namespace boost;
-#endif
-
 namespace isam {
 
-typedef unordered_map<int, double> umap;
-
-umap entries;
-
-// precalculated diagonal inverses
-vector<double> _diag;
-
-// recovering rows is expensive, buffer results
-vector<SparseVector> rows;
-
-// avoid having to cleanup buffers each time by explicitly marking entries as valid
-vector<unsigned int> rows_valid;
-
-// avoid having to cleanup valid entries by using different indices each time
-unsigned int current_valid = 1;
-
-// stats
-int num_calc;
-
-void prepare(const SparseMatrix& R) {
+void prepare(const SparseMatrix& R, CovarianceCache& cache) {
   // reset hash table
-  entries.clear();
+  cache.entries.clear();
   // speedup row access
   int n = R.num_cols();
-  rows.resize(n);
-  rows_valid.resize(n);
-  current_valid++; // invalidate previous entries
+  cache.rows.resize(n);
+  cache.rows_valid.resize(n);
+  cache.current_valid++; // invalidate previous entries
   // wrapped back to 0? then we do have to reset the table
-  if (current_valid==0) {
+  if (cache.current_valid==0) {
     for (int i=0; i<n; i++) {
-      rows_valid[i] = 0;
+      cache.rows_valid[i] = 0;
     }
-    current_valid = 1;
+    cache.current_valid = 1;
   }
   // precalculate inverses
-  _diag.resize(n);
+  cache.diag.resize(n);
   for (int i=0; i<n; i++) {
-    _diag[i] = 1. / R(i,i);
+    cache.diag[i] = 1. / R(i,i);
   }
   // stats
-  num_calc = 0;
+  cache.num_calc = 0;
 }
 
-const SparseVector& get_row(const SparseMatrix& R, int i) {
-  if (rows_valid[i] != current_valid) {
+const SparseVector& get_row(const SparseMatrix& R, CovarianceCache& cache, int i) {
+  if (cache.rows_valid[i] != cache.current_valid) {
     // retrieve and store row
-    rows[i] = R.get_row(i);
-    rows_valid[i] = current_valid;
+    cache.rows[i] = R.get_row(i);
+    cache.rows_valid[i] = cache.current_valid;
   }
-  return rows[i];
+  return cache.rows[i];
 }
 
 // for recursive call
-double recover(const SparseMatrix& R, int n, int i, int l);
+double recover(const SparseMatrix& R, CovarianceCache& cache, int n, int i, int l);
 
-inline double sum_j(const SparseMatrix& R, int n, int l, int i) {
+inline double sum_j(const SparseMatrix& R, CovarianceCache& cache, int n, int l, int i) {
   double sum = 0;
-  for (SparseVectorIter iter(get_row(R, i)); iter.valid(); iter.next()) {
+  for (SparseVectorIter iter(get_row(R, cache, i)); iter.valid(); iter.next()) {
     double rij;
     int j = iter.get(rij);
     if (j!=i) {
       double lj;
       if (j>l) {
-        lj = recover(R, n, l, j);
+        lj = recover(R, cache, n, l, j);
       } else {
-        lj = recover(R, n, j, l);
+        lj = recover(R, cache, n, j, l);
       }
       sum += rij * lj;
     }
@@ -116,23 +91,23 @@ inline double sum_j(const SparseMatrix& R, int n, int l, int i) {
   return sum;
 }
 
-double recover(const SparseMatrix& R, int n, int i, int l) {
+double recover(const SparseMatrix& R, CovarianceCache& cache, int n, int i, int l) {
   if (i>l) {int tmp=i; i=l; l=tmp;}
   int id = i*n + l; // flatten index for hash table
-  umap::iterator it = entries.find(id);
+  umap::iterator it = cache.entries.find(id);
   double res;
-  if (it == entries.end()) {
+  if (it == cache.entries.end()) {
     //printf("calculating entry %i,%i\n", i, l);
     // need to calculate entry
     if (i==l) {
-      res = _diag[l] * (_diag[l] - sum_j(R, n, l, l));
+      res = cache.diag[l] * (cache.diag[l] - sum_j(R, cache, n, l, l));
     } else {
-      res = -sum_j(R, n, l, i) * _diag[i];
+      res = -sum_j(R, cache, n, l, i) * cache.diag[i];
     }
     // insert into hash
     pair<int, double> entry(id, res);
-    entries.insert(entry);
-    num_calc++;
+    cache.entries.insert(entry);
+    cache.num_calc++;
   } else {
     //printf("retrieved entry %i,%i\n", i, l);
     // retrieve value from hash
@@ -141,8 +116,9 @@ double recover(const SparseMatrix& R, int n, int i, int l) {
   return res;
 }
 
-list<MatrixXd> cov_marginal(const SparseMatrix& R, const index_lists_t& index_lists, bool debug, int step) {
-  prepare(R);
+list<MatrixXd> cov_marginal(const SparseMatrix& R, CovarianceCache& cache,
+                            const index_lists_t& index_lists, bool debug, int step) {
+  prepare(R, cache);
   list<MatrixXd> Cs;
 
   // debugging
@@ -158,7 +134,7 @@ list<MatrixXd> cov_marginal(const SparseMatrix& R, const index_lists_t& index_li
     int n = R.num_cols();
     for (int r=n_indices-1; r>=0; r--) {
       for (int c=n_indices-1; c>=r; c--) {
-        C(r,c) = recover(R, n, indices[r], indices[c]);
+        C(r,c) = recover(R, cache, n, indices[r], indices[c]);
       }
     }
     for (unsigned int r=1; r<n_indices; r++) {
@@ -174,7 +150,7 @@ list<MatrixXd> cov_marginal(const SparseMatrix& R, const index_lists_t& index_li
     double time = toc(t0);
     // timing
     printf("cov: %i calculated for %i requested in %f seconds\n",
-           num_calc, requested, time);
+           cache.num_calc, requested, time);
     if (step>=0) {
       // stats for gnuplot
       printf("ggg %i %i %i %i %i %i %f ",
@@ -182,7 +158,7 @@ list<MatrixXd> cov_marginal(const SparseMatrix& R, const index_lists_t& index_li
              R.num_cols(), // side length
              R.num_cols()*R.num_cols(), // #entries dense
              R.nnz(), // #entries sparse
-             num_calc, // #entries calculated
+             cache.num_calc, // #entries calculated
              requested, // #entries requested
              time); // #execution time
     }
@@ -191,14 +167,15 @@ list<MatrixXd> cov_marginal(const SparseMatrix& R, const index_lists_t& index_li
   return Cs;
 }
 
-list<double> cov_marginal(const SparseMatrix& R, const entry_list_t& entry_list) {
-  prepare(R);
+list<double> cov_marginal(const SparseMatrix& R, CovarianceCache& cache,
+                          const entry_list_t& entry_list) {
+  prepare(R, cache);
   list<double> entries;
 
   int n = R.num_cols();
   for (unsigned int i=0; i<entry_list.size(); i++) {
     const pair<int, int>& index = entry_list[i];
-    double entry = recover(R, n, index.first, index.second);
+    double entry = recover(R, cache, n, index.first, index.second);
     entries.push_back(entry);
   }
 

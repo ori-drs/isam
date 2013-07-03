@@ -3,10 +3,11 @@
  * @brief SLAM implementation using iSAM
  * @author Michael Kaess
  * @author Hordur Johannsson
- * @version $Id: Slam.cpp 6377 2012-03-30 20:06:44Z kaess $
+ * @version $Id: Slam.cpp 7610 2012-10-25 10:21:12Z hordurj $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -45,6 +46,13 @@ namespace isam {
 // for numbering of factors and nodes
 int Node::_next_id = 0;
 int Factor::_next_id = 0;
+
+struct DeleteOnReturn
+{
+  SparseVector** _ptr;
+  explicit DeleteOnReturn(SparseVector** ptr) : _ptr(ptr) {}
+  ~DeleteOnReturn() { delete [] _ptr; }
+};
 
 // for getting correct starting positions in matrix for each node,
 // only needed after removing nodes
@@ -191,6 +199,12 @@ int Slam::batch_optimization()
 {
   int num_iterations = 0;
 
+  int variables_deleted;
+  int measurements_deleted;
+  erase_marked(variables_deleted, measurements_deleted);
+  _dim_nodes -= variables_deleted;
+  _dim_measure -= measurements_deleted;
+
   _opt.batch_optimize(_prop, &num_iterations);
   return num_iterations;
 }
@@ -284,7 +298,8 @@ SparseSystem Slam::jacobian_numerical_columnwise() {
   // label starting points of rows, and initialize sparse row vectors with
   // correct number of entries
   int num_rows = _dim_measure;
-  SparseVector* rows[num_rows];
+  DeleteOnReturn rows_ptr(new SparseVector* [num_rows]);
+  SparseVector** rows = rows_ptr._ptr; //[num_rows];
   int pos = 0;
   vector<int> factor_offset(get_factors().size());
   for (list<Factor*>::const_iterator it = get_factors().begin();
@@ -384,7 +399,9 @@ SparseSystem Slam::jacobian_partial(int last_n) {
   if (last_n > 0) {
     num_rows = _num_new_rows;
   }
-  SparseVector* rows[num_rows];
+  DeleteOnReturn rows_ptr(new SparseVector*[num_rows]);
+  SparseVector** rows = rows_ptr._ptr; //[num_rows];
+
   VectorXd rhs(num_rows);
   int row = 0;
   const list<Factor*>& factors = get_factors();

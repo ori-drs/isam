@@ -2,10 +2,11 @@
  * @file Graph.h
  * @brief Basic graph for iSAM.
  * @author Michael Kaess
- * @version $Id: Graph.h 4038 2011-02-26 04:31:00Z kaess $
+ * @version $Id: Graph.h 7610 2012-10-25 10:21:12Z hordurj $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -27,6 +28,7 @@
 #pragma once
 
 #include <list>
+#include <set>
 #include <string>
 #include <ostream>
 
@@ -60,6 +62,35 @@ public:
   const std::list<Factor*>& get_factors() const {return _factors;}
   int num_nodes() const {return _nodes.size();}
   int num_factors() const {return _factors.size();}
+
+  void erase_marked(int & variables_deleted, int & measurements_deleted)
+  {
+    variables_deleted = 0;
+    measurements_deleted = 0;
+
+    for (std::list<Node*>::iterator node = _nodes.begin(); node != _nodes.end(); )
+    {
+      if ((*node)->deleted()) {
+        variables_deleted += (*node)->dim();
+        node = _nodes.erase(node);
+      } else ++node;
+    }
+    std::set<Node*> nodes_affected;
+    for (std::list<Factor*>::iterator factor = _factors.begin(); factor != _factors.end();)
+    {
+      if ((*factor)->deleted()) {
+        std::vector<Node*> & nodes = (*factor)->nodes();
+        for (std::vector<Node*>::iterator node = nodes.begin(); node != nodes.end(); ++node)
+          nodes_affected.insert(*node);
+        measurements_deleted += (*factor)->dim();
+        factor = _factors.erase(factor);
+      } else ++factor;
+    }
+    for (std::set<Node*>::iterator node = nodes_affected.begin(); node != nodes_affected.end(); ++node)
+    {
+      (*node)->erase_marked_factors();
+    }
+  }
 
   virtual void print_graph() const {
     printf("****GRAPH****:\n");

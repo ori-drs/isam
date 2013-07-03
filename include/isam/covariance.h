@@ -2,10 +2,12 @@
  * @file covariance.h
  * @brief Recovery of marginal covariance matrix.
  * @author Michael Kaess
- * @version $Id: covariance.h 4688 2011-06-08 13:26:07Z hordurj $
+ * @author Nicholas Carlevaris-Bianco
+ * @version $Id: covariance.h 8578 2013-07-01 00:28:49Z kaess $
  *
- * Copyright (C) 2009-2012 Massachusetts Institute of Technology.
- * Michael Kaess, Hordur Johannsson, David Rosen and John J. Leonard
+ * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
+ * Michael Kaess, Hordur Johannsson, David Rosen,
+ * Nicholas Carlevaris-Bianco and John. J. Leonard
  *
  * This file is part of iSAM.
  *
@@ -31,23 +33,56 @@
 #include <list>
 #include <Eigen/Dense>
 
+#define USE_TR1
+#ifdef USE_TR1
+#include <tr1/unordered_map>
+#else
+#include "boost/unordered_map.hpp"
+#endif
+
 #include "SparseMatrix.h"
 
 namespace isam {
 
-typedef std::vector< std::vector<int> > index_lists_t;
+#ifdef USE_TR1
+#include <tr1/unordered_map>
+typedef std::tr1::unordered_map<int, double> umap;
+#else
+typedef boost::unordered_map<int, double> umap;
+#endif
 
+class CovarianceCache {
+public:
+  umap entries;
+  // precalculated diagonal inverses
+  std::vector<double> diag;
+  // recovering rows is expensive, buffer results
+  std::vector<SparseVector> rows;
+  // avoid having to cleanup buffers each time by explicitly marking entries as valid
+  std::vector<unsigned int> rows_valid;
+  // avoid having to cleanup valid entries by using different indices each time
+  unsigned int current_valid;
+  // stats
+  int num_calc;
+
+  CovarianceCache () {
+    current_valid = 1;
+  }
+};
+
+typedef std::vector< std::vector<int> > index_lists_t;
 typedef std::vector< std::pair<int, int> > entry_list_t;
 
 /**
  * Takes a list of variable indices, and returns the marginal covariance matrix.
  * @param R Sparse factor matrix.
+ * @param cache Covariance cache object.
  * @param index_lists List of lists of indices; a block will be recovered for each list.
  * @param debug Optional parameter to print timing information.
  * @param step Optional parameter to print statistics (default=-1, no stats printed).
  * @return List of dense marginal covariance matrices.
  */
-std::list<Eigen::MatrixXd> cov_marginal(const SparseMatrix& R,
+std::list<Eigen::MatrixXd> cov_marginal(const SparseMatrix& R, CovarianceCache& cache,
                                         const index_lists_t& index_lists,
                                         bool debug=false, int step=-1);
 
@@ -55,12 +90,13 @@ std::list<Eigen::MatrixXd> cov_marginal(const SparseMatrix& R,
  * Takes a list of pairs of integers and returns the corresonding
  * entries of the covariance matrix.
  * @param R Sparse factor matrix.
+ * @param cache Covariance cache object.
  * @param entry_lists List of pairs of integers refering to covariance matrix entries.
  * @param debug Optional parameter to print timing information.
  * @param step Optional parameter to print statistics (default=-1, no stats printed).
  * @return List of doubles corresponding to the requested covariance matrix entries.
  */
-std::list<double> cov_marginal(const SparseMatrix& R,
+std::list<double> cov_marginal(const SparseMatrix& R, CovarianceCache& cache,
                                const entry_list_t& entry_list);
 
 }
