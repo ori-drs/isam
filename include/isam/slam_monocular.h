@@ -2,7 +2,7 @@
  * @file slam_monocular.h
  * @brief Provides nodes and factors for monocular vision applications.
  * @author Michael Kaess
- * @version $Id: slam_monocular.h 8429 2013-05-15 02:22:17Z kaess $
+ * @version $Id: slam_monocular.h 9316 2013-11-18 20:26:11Z kaess $
  *
  * Copyright (C) 2009-2013 Massachusetts Institute of Technology.
  * Michael Kaess, Hordur Johannsson, David Rosen,
@@ -24,8 +24,6 @@
  * along with iSAM.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-// WARNING: The monocular factor has not been tested extensively...
 
 #pragma once
 
@@ -97,14 +95,14 @@ public:
   }
 
   Point3dh backproject(const Pose3d& pose, const MonocularMeasurement& measure,
-      double distance = 5.) const {
+      double z = 5.) const {
     double lx = (measure.u-_pp(0));
     double ly = (measure.v-_pp(1));
     double lz = _f;
-    if (distance<0.) {
-      std::cout << "Warning: MonocularCamera.backproject called with negative distance\n";
+    if (z<=0.) {
+      std::cout << "Warning: MonocularCamera.backproject called with non-positive z\n";
     }
-    double lw = 1./distance;
+    double lw = _f/z;
     Point3dh X(lz, lx, ly, lw);
 
     return pose.transform_from(X);
