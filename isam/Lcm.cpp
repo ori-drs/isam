@@ -28,8 +28,8 @@
 #include <vector>
 #include <list>
 
-#include "lcmtypes/mrlcm_obj_collection_t.h"
-#include "lcmtypes/mrlcm_obj_t.h"
+#include "lcmtypes/mrlcm_object_collection_t.h"
+#include "lcmtypes/mrlcm_object_t.h"
 #include "lcmtypes/mrlcm_link_collection_t.h"
 #include "lcmtypes/mrlcm_link_t.h"
 #include "lcmtypes/mrlcm_cov_collection_t.h"
@@ -71,25 +71,26 @@ void Lcm::send_nodes(const vector<Pose3d, Eigen::aligned_allocator<isam::Pose3d>
                      int type) const {
   unsigned int num = poses.size();
   if (lcm) {
-    mrlcm_obj_collection_t objs;
+    mrlcm_object_collection_t objs;
     objs.id = id;
     objs.name = name;
     objs.type = type;
     objs.reset = true;
-    objs.nobjs = num;
-    mrlcm_obj_t ps[num];
+    objs.nobjects = num;
+    mrlcm_object_t ps[num];
     for (unsigned int i = 0; i < num; i++) {
       Pose3d pose = poses[i];
       ps[i].id = i;
       ps[i].x = pose.x();
       ps[i].y = pose.y();
       ps[i].z = pose.z();
-      ps[i].yaw   = pose.yaw();
-      ps[i].pitch = pose.pitch();
-      ps[i].roll  = pose.roll();
+      ps[i].qw   = pose.rot().w();
+      ps[i].qx   = pose.rot().x();
+      ps[i].qy   = pose.rot().y();
+      ps[i].qz   = pose.rot().z();
     }
-    objs.objs = ps;
-    mrlcm_obj_collection_t_publish(lcm, "OBJ_COLLECTION", &objs);
+    objs.objects = ps;
+    mrlcm_object_collection_t_publish(lcm, "OBJECT_COLLECTION", &objs);
   }
 }
 
