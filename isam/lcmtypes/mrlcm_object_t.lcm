@@ -1,12 +1,13 @@
 package mrlcm;
 
-struct obj_t
+struct object_t
 {
   int64_t id; // unique ID, can be timestamp
   double x;
   double y;
   double z;
-  double yaw;
-  double pitch;
-  double roll;
+  double qw;
+  double qx;
+  double qy;
+  double qz;
 }
