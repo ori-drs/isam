@@ -329,7 +329,7 @@ void visualize(unsigned int step) {
       lcm_first = false;
     }
     if (use_lcm && step%mod_draw==0) {
-      lcm.send_nodes(loader->poses(step), id_trajectory, (char*)"Trajectory", 1);
+      lcm.send_nodes(loader->poses(step), id_trajectory, (char*)"Trajectory", 5);
       lcm.send_nodes(loader->points(step), id_landmarks, (char*)"Landmarks", loader->is_3d() ? 3 : 2);
       lcm.send_links(loader->constraints(step), id_constraints,
           (char*)"Odometry", id_trajectory, id_trajectory);
